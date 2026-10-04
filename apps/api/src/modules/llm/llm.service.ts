@@ -12,11 +12,32 @@ import {
   StructuredRequest,
   StructuredResult,
 } from './llm.types';
-import { RESEARCH_LLM_PROMPTS, WRITER_LLM_PROMPTS } from '@youtube-ai-tool/shared';
+import {
+  PROJECT_LLM_STAGE_IDS,
+  RESEARCH_LLM_PROMPTS,
+  WRITER_LLM_PROMPTS,
+  formatModelRef,
+  type ProjectLlmStageId,
+} from '@youtube-ai-tool/shared';
 import type { PromptName } from './prompt-names';
 
 const RESEARCH = new Set<string>(RESEARCH_LLM_PROMPTS);
 const WRITER = new Set<string>(WRITER_LLM_PROMPTS);
+const STAGES = new Set<string>(PROJECT_LLM_STAGE_IDS);
+
+function isStage(name: PromptName): name is ProjectLlmStageId {
+  return STAGES.has(name);
+}
+
+function parseOverrides(raw: unknown): Partial<Record<ProjectLlmStageId, string>> {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: Partial<Record<ProjectLlmStageId, string>> = {};
+  for (const id of PROJECT_LLM_STAGE_IDS) {
+    const v = (raw as Record<string, unknown>)[id];
+    if (typeof v === 'string' && v.trim()) out[id] = v.trim();
+  }
+  return out;
+}
 
 const MAX_TOOL_ROUNDS = 5;
 const MAX_REPAIRS = 2;
@@ -136,6 +157,10 @@ export class LlmService {
     return Math.round(usd * 10000) / 10000;
   }
 
+  defaultModelFor(promptName: PromptName): string {
+    return this.llm.models[promptName];
+  }
+
   researchDefaultModel(): string {
     return this.llm.models.research_queries;
   }
@@ -144,14 +169,51 @@ export class LlmService {
     return this.llm.models.writer;
   }
 
+  configuredProviders() {
+    const p = this.llm.providers;
+    return [
+      { id: 'openai' as const, label: 'OpenAI', configured: Boolean(p.openai.apiKey) },
+      { id: 'anthropic' as const, label: 'Anthropic', configured: Boolean(p.anthropic.apiKey) },
+      { id: 'gemini' as const, label: 'Gemini', configured: Boolean(p.gemini.apiKey) },
+      { id: 'xai' as const, label: 'xAI (Grok)', configured: Boolean(p.xai.apiKey) },
+      { id: 'perplexity' as const, label: 'Perplexity (Sonar)', configured: Boolean(p.perplexity.apiKey) },
+    ];
+  }
+
+  modelPresets(): string[] {
+    const p = this.llm.providers;
+    const out: string[] = [];
+    const push = (provider: Parameters<typeof formatModelRef>[0], model: string) => {
+      if (model.trim()) out.push(formatModelRef(provider, model.trim()));
+    };
+    if (p.openai.apiKey) {
+      push('openai', 'gpt-4o');
+      push('openai', 'gpt-4o-mini');
+    }
+    if (p.anthropic.apiKey) {
+      push('anthropic', p.anthropic.opusModel);
+      push('anthropic', p.anthropic.defaultModel);
+    }
+    if (p.gemini.apiKey) push('gemini', this.llm.geminiDefaultModel);
+    if (p.xai.apiKey) push('xai', this.llm.xaiDefaultModel);
+    if (p.perplexity.apiKey) {
+      push('perplexity', p.perplexity.defaultModel);
+      push('perplexity', 'sonar');
+    }
+    for (const id of PROJECT_LLM_STAGE_IDS) out.push(this.llm.models[id]);
+    return [...new Set(out)];
+  }
+
   private async resolveModel(promptName: PromptName, projectId?: string | null): Promise<string> {
     const fallback = this.llm.models[promptName];
     if (!projectId) return fallback;
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
-      select: { llmResearchModel: true, llmWriterModel: true },
+      select: { llmResearchModel: true, llmWriterModel: true, llmModelOverrides: true },
     });
     if (!project) return fallback;
+    const overrides = parseOverrides(project.llmModelOverrides);
+    if (isStage(promptName) && overrides[promptName]) return overrides[promptName]!;
     if (project.llmResearchModel && RESEARCH.has(promptName)) return project.llmResearchModel;
     if (project.llmWriterModel && WRITER.has(promptName)) return project.llmWriterModel;
     return fallback;

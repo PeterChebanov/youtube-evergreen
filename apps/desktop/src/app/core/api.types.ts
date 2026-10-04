@@ -20,6 +20,8 @@ export type {
   WriterState,
   SearchOption,
   LlmDefaults,
+  LlmCatalog,
+  ProjectLlmStageId,
   SearchProviderId,
 } from '@youtube-ai-tool/shared';
 

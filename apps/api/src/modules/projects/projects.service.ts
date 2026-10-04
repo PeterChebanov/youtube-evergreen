@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  PROJECT_LLM_STAGE_IDS,
   SEARCH_PROVIDER_IDS,
   adviceFiltersSchema,
   adviceRunResultSchema,
@@ -9,11 +10,12 @@ import {
   type CustomRequest,
   type PlanContent,
   type ProjectDto,
+  type ProjectLlmStageId,
   type ProjectStatus,
   type SearchProviderId,
   type UpdateProjectRequest,
 } from '@youtube-ai-tool/shared';
-import type { Project } from '@prisma/client';
+import type { Prisma, Project } from '@prisma/client';
 import { conflict, DomainError, invalid, orNotFound } from '../../common/domain-error';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DbToolsService } from '../db-tools/db-tools.service';
@@ -38,7 +40,18 @@ export function toProjectDto(p: Project): ProjectDto {
     searchProviders: parseSearchProviders(p.searchProviders),
     llmResearchModel: p.llmResearchModel,
     llmWriterModel: p.llmWriterModel,
+    llmModelOverrides: parseLlmOverrides(p.llmModelOverrides),
   };
+}
+
+function parseLlmOverrides(raw: unknown): ProjectDto['llmModelOverrides'] {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: Partial<Record<ProjectLlmStageId, string>> = {};
+  for (const id of PROJECT_LLM_STAGE_IDS) {
+    const v = (raw as Record<string, unknown>)[id];
+    if (typeof v === 'string' && v.trim()) out[id] = v.trim();
+  }
+  return out;
 }
 
 function parseSearchProviders(values: string[]): SearchProviderId[] {
@@ -136,8 +149,18 @@ export class ProjectsService {
       const bad = patch.searchProviders.filter((id) => !SEARCH_PROVIDER_IDS.includes(id));
       if (bad.length) throw invalid(`Unknown search provider: ${bad.join(', ')}`);
     }
+    if (patch.llmModelOverrides !== undefined && patch.llmModelOverrides !== null) {
+      for (const key of Object.keys(patch.llmModelOverrides)) {
+        if (!PROJECT_LLM_STAGE_IDS.includes(key as ProjectLlmStageId)) {
+          throw invalid(`Unknown LLM stage: ${key}`);
+        }
+      }
+    }
     if (project.status === 'done') throw conflict('A finished project can no longer be changed');
-    return toProjectDto(await this.prisma.project.update({ where: { id }, data: patch }));
+    const data = (
+      patch.llmModelOverrides === null ? { ...patch, llmModelOverrides: {} } : patch
+    ) as Prisma.ProjectUpdateInput;
+    return toProjectDto(await this.prisma.project.update({ where: { id }, data }));
   }
 
   async transition(id: string, to: ProjectStatus): Promise<Project> {

@@ -34,18 +34,21 @@ function parseArgs(raw: string): Record<string, unknown> {
   }
 }
 
-export class OpenAiLlmProvider implements LlmProvider {
+/** OpenAI SDK client pointed at OpenAI, xAI, Gemini OpenAI-compat, Perplexity Sonar, etc. */
+export class OpenAiCompatibleLlmProvider implements LlmProvider {
   private readonly client: OpenAI;
+  private readonly jsonMode: boolean;
 
-  constructor(apiKey: string) {
-    this.client = new OpenAI({ apiKey });
+  constructor(apiKey: string, baseURL: string, jsonMode = true) {
+    this.client = new OpenAI({ apiKey, baseURL });
+    this.jsonMode = jsonMode;
   }
 
   async chat(req: LlmChatRequest): Promise<LlmChatResponse> {
     const res = await this.client.chat.completions.create({
       model: req.model,
       messages: req.messages.map(toOpenAi),
-      response_format: { type: 'json_object' },
+      ...(this.jsonMode ? { response_format: { type: 'json_object' as const } } : {}),
       ...(req.tools?.length
         ? {
             tools: req.tools.map((t) => ({
@@ -72,5 +75,12 @@ export class OpenAiLlmProvider implements LlmProvider {
       vectors: [...res.data].sort((a, b) => a.index - b.index).map((d) => d.embedding),
       inputTokens: res.usage?.prompt_tokens ?? 0,
     };
+  }
+}
+
+/** @deprecated use OpenAiCompatibleLlmProvider */
+export class OpenAiLlmProvider extends OpenAiCompatibleLlmProvider {
+  constructor(apiKey: string) {
+    super(apiKey, 'https://api.openai.com/v1');
   }
 }

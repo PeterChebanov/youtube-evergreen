@@ -96,34 +96,37 @@ cp config/env.example .env
 | `PERPLEXITY_API_KEY` | [Perplexity Search API](https://docs.perplexity.ai/) — веб-поиск (отдельно от Sonar chat) |
 | `REDDIT_CLIENT_ID` + `REDDIT_CLIENT_SECRET` | Reddit API (опционально) |
 
-На вкладках **Plan**, **Fact research** и **Writer** блок **Project AI** сохраняет, **какие** из настроенных источников использовать для этого ролика (любая комбинация чекбоксов), а также опциональные overrides моделей **Research** и **Author (Writer)**.
+На вкладках **Plan**, **Fact research** и **Writer** блок **Project AI** сохраняет источники веб-поиска (чекбоксы) и модель **на каждый шаг** pipeline (формат `provider:model-id`, например `perplexity:sonar-pro`, `anthropic:claude-sonnet-4-5-20250929`).
 | `SEARCH_RESULTS_PER_QUERY` | Сколько ссылок на запрос |
 | `SEARCH_MAX_PAGES_PER_CHAPTER` | Лимит страниц на главу |
 | `SEARCH_FETCH_TIMEOUT_MS` | Таймаут загрузки страницы |
 
 ---
 
-## 3. Ваши ключи: Perplexity, Grok, Claude, Gemini
+## 3. Несколько LLM-провайдеров и Perplexity vs Tavily/Brave
 
-**Как устроено сейчас в коде**
+**LLM (текст / JSON)** — роутер по префиксу модели:
 
-- LLM: только **`mock`** или **`openai`** (`OpenAiLlmProvider` — SDK OpenAI, `response_format: json_object`, embeddings).
-- Отдельных переменных `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `GROK_API_KEY`, `PERPLEXITY_API_KEY` **нет**.
-- Fact research **не** использует Perplexity как поисковик — только Tavily / Brave / Reddit (или mock).
+| Переменные | Провайдер |
+|---|---|
+| `OPENAI_API_KEY`, `OPENAI_BASE_URL` | OpenAI (+ embeddings для pgvector) |
+| `ANTHROPIC_API_KEY`, `ANTHROPIC_OPUS_MODEL`, `ANTHROPIC_MODEL`, `ANTHROPIC_VERSION`, `ANTHROPIC_MAX_TOKENS` | Claude — Writer/refine по умолчанию **Opus** (`ANTHROPIC_OPUS_MODEL`, напр. `claude-opus-4-5-20251101`); Sonnet — `ANTHROPIC_MODEL` для summary и экспериментов |
+| `GEMINI_API_KEY`, `GEMINI_BASE_URL` | Gemini (OpenAI-compatible endpoint) |
+| `XAI_API_KEY`, `XAI_BASE_URL` | Grok |
+| `PERPLEXITY_API_KEY`, `PERPLEXITY_BASE_URL`, `PERPLEXITY_MODEL` | Sonar chat (`perplexity:sonar-pro` и т.д.) |
 
-**Что можно сделать без доработки кода**
+`LLM_PROVIDER=mock` — заглушка для тестов. Иначе API поднимается с любым набором ключей выше.
 
-1. **OpenAI** — положить ключ в `OPENAI_API_KEY`, выставить `LLM_PROVIDER=openai`, модели в `LLM_MODEL_*`.
-2. **Один «шлюз» с OpenAI-совместимым API** (OpenRouter, LiteLLM, Azure OpenAI и т.п.) — **пока не поддерживается**: в коде нет `OPENAI_BASE_URL`. Нужна небольшая доработка API.
+**Два разных слоя «поиска» (их не путать):**
 
-**Что вы просите дополнительно (ещё не в UI)**
+1. **Sonar (LLM)** — модель `perplexity:…` сама ходит в индекс Perplexity при вызове chat (planning, queries, fact_extract).
+2. **Search API** (чекбоксы в UI) — приложение **само параллельно** дергает Tavily, Brave, **Perplexity Search**, Reddit, склеивает URL, скачивает страницы, потом LLM извлекает факты. Perplexity **не** вызывает Tavily/Brave за вас; комбинация источников = больше разных ссылок и углов.
 
-- Выбор **модели LLM на экране** для «research» и «автора» **на каждый ролик (проект)**.
-- Сейчас:
-  - модели задаются **только в `.env`** по типу промпта (одинаково для всех проектов);
-  - «автор» в Writer — это **`authorOverlayChannelId`**: стилистические приёмы **исследованного канала** из БД, а не выбор Claude vs Gemini.
+**Дефолты без overrides в UI:** research → `perplexity:PERPLEXITY_MODEL`; `writer` / `writer_refine` → `anthropic:ANTHROPIC_OPUS_MODEL`; `chapter_summary` → `anthropic:ANTHROPIC_MODEL` (Sonnet). На каждом шаге pipeline в **Project AI** можно указать любую комбинацию провайдеров.
 
-Это отдельная фича: поля в `Project`, API, экраны Research/Writer/Plan, провайдеры Anthropic/Google/xAI. Имеет смысл оформить отдельным этапом после базовых ключей.
+Первый прогон: [`REAL_WORLD_TEST.md`](REAL_WORLD_TEST.md).
+
+**Автор в Writer** — это и **модель** (`writer` / `writer_refine`), и опционально **`authorOverlayChannelId`** (стиль канала из Research).
 
 ---
 

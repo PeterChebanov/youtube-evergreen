@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { llmModelOverridesSchema } from '../llm/overrides-schema';
+import { PROJECT_LLM_STAGE_IDS } from '../llm/stages';
 import { SEARCH_PROVIDER_IDS } from '../search/providers';
 import { planDraftSchema } from './plan.schema';
 
@@ -41,6 +43,7 @@ export const updateProjectRequestSchema = z
     searchProviders: z.array(z.enum(SEARCH_PROVIDER_IDS)),
     llmResearchModel: z.string().trim().min(1).nullable(),
     llmWriterModel: z.string().trim().min(1).nullable(),
+    llmModelOverrides: llmModelOverridesSchema.nullable(),
   })
   .partial();
 export type UpdateProjectRequest = z.infer<typeof updateProjectRequestSchema>;

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { LlmDefaults, OpsStatus, SearchOption } from '@youtube-ai-tool/shared';
+import { PROJECT_LLM_STAGES, type LlmCatalog, type LlmDefaults, type OpsStatus, type SearchOption } from '@youtube-ai-tool/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LlmService } from '../llm/llm.service';
 import { QueueService } from '../queue/queue.service';
@@ -30,6 +30,19 @@ export class OpsService {
 
   llmDefaults(): LlmDefaults {
     return { researchModel: this.llm.researchDefaultModel(), writerModel: this.llm.writerDefaultModel() };
+  }
+
+  llmCatalog(): LlmCatalog {
+    return {
+      providers: this.llm.configuredProviders(),
+      stages: PROJECT_LLM_STAGES.map((s) => ({
+        id: s.id,
+        label: s.label,
+        hint: s.hint,
+        defaultModel: this.llm.defaultModelFor(s.id),
+      })),
+      modelPresets: this.llm.modelPresets(),
+    };
   }
 
   /** Data for the status bar. */

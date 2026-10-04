@@ -23,6 +23,7 @@ export const project = {
   topic: 'Small towns',
   searchProviders: ['tavily', 'brave'],
   llmResearchModel: null,
+  llmModelOverrides: {},
   llmWriterModel: null,
 };
 

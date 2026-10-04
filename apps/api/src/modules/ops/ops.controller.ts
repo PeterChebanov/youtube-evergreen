@@ -26,4 +26,9 @@ export class OpsController {
   llmDefaults() {
     return this.ops.llmDefaults();
   }
+
+  @Get('llm-catalog')
+  llmCatalog() {
+    return this.ops.llmCatalog();
+  }
 }

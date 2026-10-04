@@ -202,6 +202,7 @@ model Project {
   searchProviders        String[]        @default([]) @map("search_providers")
   llmResearchModel       String?         @map("llm_research_model")
   llmWriterModel         String?         @map("llm_writer_model")
+  llmModelOverrides      Json            @default("{}") @map("llm_model_overrides")
   topic                  String?
   subtopic               String?
   createdAt              DateTime        @default(now()) @map("created_at")
