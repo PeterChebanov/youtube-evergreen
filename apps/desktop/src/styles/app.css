@@ -1,0 +1,69 @@
+/* Additions on top of tokens.css + components.css (both used unchanged).
+   Tokens only: no literal colors, no shadows, radius var(--r). */
+
+html, body { height: 100%; margin: 0; background: var(--bg); }
+es-root { display: block; height: 100%; }
+
+/* long unbroken strings wrap everywhere (DESIGN_SPEC 5.3); zero specificity so .ell / nowrap still win */
+.app :where(h1, h2, h3, p, li, div, span, label, a, b) { overflow-wrap: anywhere; }
+
+/* native controls rendered inside the design's .select box */
+.select > select {
+  appearance: none; border: 0; padding: 0; margin: 0; background: transparent;
+  font: inherit; color: inherit; cursor: pointer; max-width: 260px;
+}
+.select:focus-within { outline: 2px solid var(--acc); outline-offset: 1px; }
+button.select { font: inherit; font-family: var(--f-mono); font-size: 11.5px; color: var(--fg); cursor: pointer; }
+button.select:focus-visible { outline: 2px solid var(--acc); outline-offset: 1px; }
+
+/* keyboard reachability for non-button controls */
+label.check { cursor: pointer; }
+label.check:focus-visible, .seg > span:focus-visible, .chlist > a:focus-visible, .tbl tr.is-clickable:focus-visible {
+  outline: 2px solid var(--acc); outline-offset: 1px;
+}
+.tbl tr.is-clickable { cursor: pointer; }
+
+/* disabled controls: 50% opacity, no hover */
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btn:disabled:hover { border-color: var(--line); }
+.btn-primary:disabled:hover { border-color: transparent; filter: none; }
+label.check.is-disabled { opacity: 0.5; cursor: default; }
+
+/* a long project title must not push the tabs off the top bar */
+.projsel { max-width: 300px; overflow: hidden; text-overflow: ellipsis; }
+
+/* panel titles wrap; the controls next to them keep their size */
+.panel-head > h2 { min-width: 0; }
+.panel-head > .btn, .panel-head > .meta { flex: none; }
+
+.statusbar .dot.is-bad { color: var(--bad); }
+a.url-link { color: var(--acc); }
+a.url-link:hover { text-decoration: underline; }
+
+/* surfaces built from .panel: dialogs, jump palette, menus */
+.overlay {
+  position: fixed; inset: 0; z-index: 20; display: flex; justify-content: center; align-items: flex-start;
+  padding-top: 12vh; background: color-mix(in srgb, var(--bg) 72%, transparent);
+}
+.overlay > .panel { width: min(560px, calc(100vw - 32px)); max-height: 72vh; overflow: auto; }
+.menu-anchor { position: relative; display: flex; align-items: center; }
+.menu {
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 15;
+  width: 340px; max-height: 60vh; overflow: auto;
+}
+.menu-left { left: 0; right: auto; width: 260px; }
+.palette-list > a.is-active { background: var(--soft); }
+.dialog-actions { display: flex; justify-content: flex-end; gap: var(--s2); margin-top: var(--s3); }
+
+/* database: virtualized rows, header stays visible */
+.table-viewport { max-height: calc(100vh - 250px); min-height: 160px; overflow: auto; }
+.table-viewport thead th { position: sticky; top: 0; z-index: 1; background: var(--panel); }
+.tbl-virtual td { height: 29px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
+.tbl-virtual tr.spacer td { padding: 0; border: 0; }
+.tbl th.is-sortable { cursor: pointer; }
+.tbl td.is-cell { cursor: cell; }
+.tbl td.is-cell-selected { outline: 1px solid var(--acc); outline-offset: -1px; }
+
+/* writer: manual edit of a chapter */
+textarea.field.field-script { height: 360px; font-size: var(--t-script); line-height: 1.7; }
+textarea.field.field-tall { height: 120px; }

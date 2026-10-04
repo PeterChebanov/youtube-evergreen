@@ -1,0 +1,114 @@
+<div class="page-head">
+  <div>
+    <h1>Advice</h1>
+    <p class="sub">Three topics from your library: one rework of a proven evergreen, two structural analogues.</p>
+  </div>
+  <div class="seg" role="tablist">
+    <span role="tab" tabindex="0" [class.is-on]="mode() === 'advice'" [attr.aria-selected]="mode() === 'advice'"
+      (click)="focus('advice')" (keydown.enter)="focus('advice')">Advice</span>
+    <span role="tab" tabindex="0" [class.is-on]="mode() === 'custom'" [attr.aria-selected]="mode() === 'custom'"
+      (click)="focus('custom')" (keydown.enter)="focus('custom')">Custom request</span>
+  </div>
+</div>
+
+<div class="toolbar">
+  <div class="toolbar-group">
+    <label class="select">Period:
+      <select aria-label="Period" [value]="periodIndex()" (change)="periodIndex.set(+$any($event.target).value)">
+        @for (o of periodOptions; track o.label; let i = $index) {
+          <option [value]="i" [selected]="i === periodIndex()">{{ o.label }}</option>
+        }
+      </select> ▾</label>
+    <div class="menu-anchor" (click)="$event.stopPropagation()">
+      <button class="select" type="button" aria-haspopup="true" [attr.aria-expanded]="genreMenu()" (click)="genreMenu.set(!genreMenu())">Genre: {{ genreText() }} ▾</button>
+      @if (genreMenu()) {
+        <section class="panel menu menu-left" aria-label="Genres">
+          @if (genreIds().length) {
+            <div class="row-between" style="margin-bottom:8px"><span class="mute">{{ genreIds().length }} selected</span>
+              <button class="btn btn-sm" type="button" (click)="genreIds.set([])">Clear</button></div>
+          }
+          <div class="field-group">
+            @for (g of approvedGenres(); track g.id) {
+              <label esCheck [checked]="genreIds().includes(g.id)" (checkedChange)="toggleGenre(g.id)">{{ g.name }}</label>
+            } @empty {
+              <p class="mute">No genres yet. They appear after the first channel research.</p>
+            }
+          </div>
+        </section>
+      }
+    </div>
+    <label esCheck [(checked)]="skipMine">Skip topics already in My Videos</label>
+  </div>
+  <button #getButton class="btn btn-primary" type="button" [disabled]="loading()" (click)="getTopics()">Get 3 topics</button>
+</div>
+
+<div class="grid grid-advice">
+  <div class="stack">
+    @if (error()) {
+      <div class="banner row-between"><span>{{ error() }}</span><button class="btn btn-sm" type="button" (click)="getTopics()">Try again</button></div>
+    }
+    @for (w of result()?.warnings ?? []; track $index) {
+      <div class="banner">{{ w }}</div>
+    }
+    <section class="panel panel-flush">
+      <div class="panel-head"><h2>Suggested topics</h2><span class="meta">from library · no web search</span></div>
+      <div class="table-scroll">
+        <table class="tbl">
+          <colgroup><col style="width:34px"><col style="width:84px"><col style="width:30%"><col style="width:26%"><col style="width:22%"><col style="width:104px"></colgroup>
+          <thead><tr><th>#</th><th>Type</th><th>Topic</th><th>Source</th><th>Riddle</th><th></th></tr></thead>
+          <tbody>
+            @if (loading()) {
+              @for (n of [1, 2, 3]; track n) {
+                <tr><td colspan="6"><div class="skeleton"></div></td></tr>
+              }
+            } @else {
+              @for (row of rows(); track row.i) {
+                <tr class="is-clickable" [class.is-selected]="row.i === selected()" (click)="selected.set(row.i)">
+                  <td class="mute num">{{ row.i + 1 }}</td>
+                  <td>
+                    @if (row.topic.type === 'rework') { <span class="pill pill-acc">Rework</span> } @else { <span class="pill">Analogue</span> }
+                  </td>
+                  <td><div class="cell-title">{{ row.topic.title }}</div><div class="cell-sub">{{ row.topic.rationale }}</div></td>
+                  <td><div>{{ row.source.line }}</div><div class="cell-sub">{{ row.source.sub }}</div></td>
+                  <td><span class="chip">{{ row.topic.riddle }}</span></td>
+                  <td>
+                    <button type="button" [class]="row.i === selected() ? 'btn btn-primary btn-sm' : 'btn btn-sm'"
+                      [disabled]="starting() !== null" (click)="$event.stopPropagation(); makePlan(row.i)">Make plan</button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr><td colspan="6" class="mute">Pick the filters and press Get 3 topics. Topics come only from researched channels.</td></tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Custom request</h2><span class="meta">database off by default</span></div>
+    <form class="field-group" (submit)="$event.preventDefault(); send()">
+      <textarea #requestField class="field" id="advice-request" aria-label="Request"
+        placeholder="A 50-minute video on why the cheapest option is rarely the cheapest, for a general audience."
+        [value]="request()" (input)="request.set($any($event.target).value)" (focus)="mode.set('custom')"></textarea>
+      <input class="field" id="advice-ref" type="text" placeholder="Reference video URL (optional, not saved to library)" aria-label="Reference video URL"
+        [value]="refUrl()" (input)="refUrl.set($any($event.target).value)">
+      <label esCheck [(checked)]="useDatabase">Use my database for this request</label>
+      <label esCheck [checked]="researchChannel()" (checkedChange)="setResearchChannel($event)" [disabled]="!refUrl().trim()">Research the whole channel of the reference video into the database</label>
+      @if (requestError()) {
+        <div class="field-error" role="alert">{{ requestError() }}</div>
+      }
+      <div class="row-between">
+        <span class="mute">Single-video research is not saved.</span>
+        <div class="actions">
+          <div class="seg" role="radiogroup" aria-label="Script language">
+            <span role="radio" tabindex="0" [class.is-on]="language() === 'ru'" [attr.aria-checked]="language() === 'ru'" (click)="language.set('ru')" (keydown.enter)="language.set('ru')">RU</span>
+            <span role="radio" tabindex="0" [class.is-on]="language() === 'en'" [attr.aria-checked]="language() === 'en'" (click)="language.set('en')" (keydown.enter)="language.set('en')">EN</span>
+          </div>
+          <button class="btn btn-primary" type="submit" [disabled]="sending()">Send</button>
+        </div>
+      </div>
+    </form>
+  </section>
+</div>

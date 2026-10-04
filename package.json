@@ -1,0 +1,21 @@
+{
+  "name": "youtube-ai-tool",
+  "private": true,
+  "scripts": {
+    "build:shared": "pnpm --filter @youtube-ai-tool/shared build",
+    "dev": "pnpm build:shared && pnpm --filter @youtube-ai-tool/api dev",
+    "dev:desktop": "pnpm build:shared && pnpm --filter @youtube-ai-tool/desktop dev",
+    "build": "pnpm build:shared && pnpm -r --filter !@youtube-ai-tool/shared run build",
+    "test": "pnpm build:shared && pnpm -r run test",
+    "test:int": "pnpm build:shared && pnpm --filter @youtube-ai-tool/api test:int",
+    "test:int:pglite": "pnpm build:shared && pnpm --filter @youtube-ai-tool/api test:int:pglite",
+    "lint": "pnpm --filter @youtube-ai-tool/api lint",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "desktop:icon": "bash scripts/install-desktop-icon.sh"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.15.0"
+}

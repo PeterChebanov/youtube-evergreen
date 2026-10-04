@@ -1,0 +1,68 @@
+<div class="page-head">
+  <div>
+    <h1>Subtitles</h1>
+    <p class="sub">One video at a time. The tone analysis is used by Writer when you switch it on.</p>
+  </div>
+</div>
+
+<form class="urlbar" (submit)="$event.preventDefault(); runCheck()">
+  <input class="field" id="subs-url" type="text" placeholder="https://www.youtube.com/watch?v=VIDEO_ID" aria-label="Video URL"
+    [value]="url()" (input)="url.set($any($event.target).value); urlError.set(null)">
+  <button class="btn btn-primary" type="submit" [disabled]="busy() !== null">Check video</button>
+</form>
+@if (urlError()) { <div class="field-error" role="alert">{{ urlError() }}</div> }
+@if (error()) { <div class="banner">{{ error() }}</div> }
+
+@if (busy() === 'check') {
+  <section class="panel"><div class="stack"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div></section>
+} @else if (check(); as c) {
+  <div class="grid grid-subs">
+    <section class="panel">
+      <div class="panel-head"><h2>Check result</h2><span class="meta">yt-dlp · subtitles {{ c.transcriptStatus ?? 'not fetched' }}</span></div>
+      <ul class="kv">
+        <li><span>Title</span><div>{{ c.youtubeTitle }}</div></li>
+        <li><span>Channel</span><div>{{ channel() }}</div></li>
+        <li><span>In database</span><div><span [class]="'pill ' + view()!.pill.cls">{{ view()!.pill.text }}</span></div></li>
+        <li><span>Length</span><div class="num">{{ length() }}</div></li>
+      </ul>
+      @if (view()!.banner) { <div class="banner" style="margin-top:12px">{{ view()!.banner }}</div> }
+      @if (notice()) { <div class="banner" style="margin-top:12px">{{ notice() }}</div> }
+      <div class="actions" style="margin-top:12px">
+        <button class="btn btn-primary" type="button" [disabled]="busy() !== null" (click)="fetch()">{{ busy() === 'fetch' ? 'Working…' : view()!.primary.label }}</button>
+        @if (view()!.offerChannelResearch) {
+          <button class="btn" type="button" [disabled]="busy() !== null" (click)="researchChannel()">Research whole channel</button>
+        }
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Transcript analysis</h2><span class="meta">{{ tone().length ? 'ready' : 'preview' }}</span></div>
+      @if (tone().length) {
+        <ul class="kv">
+          @for (row of tone(); track row.label) {
+            <li><span>{{ row.label }}</span>
+              <div>
+                @if (row.chips) {
+                  <div class="chips">@for (p of row.chips; track $index) { <span class="chip">{{ p }}</span> }</div>
+                } @else { {{ row.value }} }
+              </div>
+            </li>
+          }
+        </ul>
+        <div class="actions" style="margin-top:12px">
+          <button class="btn" type="button" [disabled]="busy() !== null || !projects.current()" [title]="projects.current() ? '' : 'Select a project first'"
+            (click)="useInWriter()">{{ inWriter() ? 'Stop using in Writer' : 'Use in Writer' }}</button>
+        </div>
+      } @else if (hasTranscript()) {
+        <p class="mute">Subtitles are stored but not analyzed yet.</p>
+        <div class="actions" style="margin-top:12px">
+          <button class="btn" type="button" [disabled]="busy() !== null" (click)="analyze()">Analyze tone</button>
+        </div>
+      } @else {
+        <p class="mute">Pace, address, humor and signature phrases appear after the subtitles are fetched.</p>
+      }
+    </section>
+  </div>
+} @else {
+  <div class="empty"><b>No video checked</b>Paste a video URL above. Subtitles are fetched only when you ask.</div>
+}

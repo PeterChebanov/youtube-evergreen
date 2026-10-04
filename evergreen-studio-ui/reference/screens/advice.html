@@ -1,0 +1,64 @@
+<section class="screen" id="screen-advice" data-screen="advice">
+  <div class="page-head">
+    <div>
+      <h1>Advice</h1>
+      <p class="sub">Three topics from your library: one rework of a proven evergreen, two structural analogues.</p>
+    </div>
+    <div class="seg" role="tablist"><span class="is-on" role="tab">Advice</span><span role="tab">Custom request</span></div>
+  </div>
+
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <span class="select">Period: last 3 years ▾</span>
+      <span class="select">Genre: Urbanism, Economics ▾</span>
+      <label class="check"><i class="is-on">✓</i><span>Skip topics already in My Videos</span></label>
+    </div>
+    <button class="btn btn-primary" type="button">Get 3 topics</button>
+  </div>
+
+  <div class="grid grid-advice">
+    <section class="panel panel-flush">
+      <div class="panel-head"><h2>Suggested topics</h2><span class="meta">from library · no web search</span></div>
+      <div class="table-scroll">
+        <table class="tbl">
+          <colgroup><col style="width:34px"><col style="width:84px"><col style="width:30%"><col style="width:26%"><col style="width:22%"><col style="width:104px"></colgroup>
+          <thead><tr><th>#</th><th>Type</th><th>Topic</th><th>Source</th><th>Riddle</th><th></th></tr></thead>
+          <tbody>
+            <tr class="is-selected">
+              <td class="mute num">1</td><td><span class="pill pill-acc">Rework</span></td>
+              <td><div class="cell-title">Why small towns empty out faster than planned</div><div class="cell-sub">Rebuilds a top evergreen with a new angle and fresh data.</div></td>
+              <td><div>1.9M-view video</div><div class="cell-sub">Утопия Шоу · 54 min</div></td>
+              <td><span class="chip">Where did the people go?</span></td>
+              <td><button class="btn btn-primary btn-sm" type="button">Make plan</button></td>
+            </tr>
+            <tr>
+              <td class="mute num">2</td><td><span class="pill">Analogue</span></td>
+              <td><div class="cell-title">The hidden cost of cheap flights</div><div class="cell-sub">Everyday object, the system behind it, who pays.</div></td>
+              <td><div>Structure match 91%</div><div class="cell-sub">Топлес · 49 min</div></td>
+              <td><span class="chip">Who is the real customer?</span></td>
+              <td><button class="btn btn-sm" type="button">Make plan</button></td>
+            </tr>
+            <tr>
+              <td class="mute num">3</td><td><span class="pill">Analogue</span></td>
+              <td><div class="cell-title">Who actually owns your apartment building</div><div class="cell-sub">Personal story, hidden owner, counter-case, twist.</div></td>
+              <td><div>Structure match 87%</div><div class="cell-sub">Варламов · 57 min</div></td>
+              <td><span class="chip">Whose name is on the deed?</span></td>
+              <td><button class="btn btn-sm" type="button">Make plan</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Custom request</h2><span class="meta">database off by default</span></div>
+      <div class="field-group">
+        <textarea class="field" id="advice-request" aria-label="Request">A 50-minute video on why the cheapest option is rarely the cheapest, for a general audience.</textarea>
+        <input class="field" id="advice-ref" type="text" placeholder="Reference video URL (optional, not saved to library)" aria-label="Reference video URL">
+        <label class="check"><i></i><span>Use my database for this request</span></label>
+        <label class="check"><i class="is-on">✓</i><span>Research the whole channel of the reference video into the database</span></label>
+        <div class="row-between"><span class="mute">Single-video research is not saved.</span><button class="btn btn-primary" type="button">Send</button></div>
+      </div>
+    </section>
+  </div>
+</section>

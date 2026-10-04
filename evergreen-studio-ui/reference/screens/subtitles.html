@@ -1,0 +1,38 @@
+<section class="screen" id="screen-subtitles" data-screen="subtitles">
+  <div class="page-head">
+    <div>
+      <h1>Subtitles</h1>
+      <p class="sub">One video at a time. The tone analysis is used by Writer when you switch it on.</p>
+    </div>
+  </div>
+
+  <form class="urlbar" onsubmit="return false">
+    <input class="field" id="subs-url" type="text" value="https://www.youtube.com/watch?v=VIDEO_ID" aria-label="Video URL">
+    <button class="btn btn-primary" type="button">Check video</button>
+  </form>
+
+  <div class="grid grid-subs">
+    <section class="panel">
+      <div class="panel-head"><h2>Check result</h2><span class="meta">yt-dlp · RU subtitles found</span></div>
+      <ul class="kv">
+        <li><span>Title</span><div>Почему закрываются заводы</div></li>
+        <li><span>Channel</span><div>Reference channel 1 · partial in database (212 of 417)</div></li>
+        <li><span>In database</span><div><span class="pill pill-warn">Not found</span></div></li>
+        <li><span>Length</span><div class="num">54:12</div></li>
+      </ul>
+      <div class="banner" style="margin-top:12px">This video is not in the database yet. Add this video, or research the whole channel first.</div>
+      <div class="actions" style="margin-top:12px"><button class="btn btn-primary" type="button">Add video and analyze</button><button class="btn" type="button">Research whole channel</button></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Transcript analysis</h2><span class="meta">preview</span></div>
+      <ul class="kv">
+        <li><span>Pace</span><div class="num">148 words/min, pauses before reveals</div></li>
+        <li><span>Address</span><div>Second person, rare direct questions</div></li>
+        <li><span>Humor</span><div>Dry asides, one every ~4 minutes</div></li>
+        <li><span>Phrases</span><div><div class="chips"><span class="chip">And here is the catch</span><span class="chip">Let us count</span><span class="chip">That is the plan</span></div></div></li>
+      </ul>
+      <div class="actions" style="margin-top:12px"><button class="btn" type="button">Use in Writer</button></div>
+    </section>
+  </div>
+</section>

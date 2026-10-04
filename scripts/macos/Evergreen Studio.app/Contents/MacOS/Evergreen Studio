@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Placeholder replaced by scripts/install-desktop-icon.sh
+exec "__PROJECT_ROOT__/scripts/launch-evergreen.sh"

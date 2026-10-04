@@ -1,0 +1,71 @@
+<div class="page-head">
+  <div>
+    <h1>Database</h1>
+    <p class="sub">Read-only view, shown the way it is stored.</p>
+  </div>
+</div>
+
+<div class="toolbar">
+  <div class="toolbar-group">
+    <label class="select">Table:
+      <select aria-label="Table" (change)="selectTable($any($event.target).value)">
+        @for (t of tables(); track t.name) {
+          <option [value]="t.name" [selected]="t.name === table()">{{ t.name }}</option>
+        } @empty {
+          <option [value]="table()">{{ table() }}</option>
+        }
+      </select> ▾</label>
+    <input class="field" id="db-filter" type="text" placeholder="Filter rows" aria-label="Filter rows" style="width:220px"
+      [value]="filter()" (input)="setFilter($any($event.target).value)">
+  </div>
+  <div class="toolbar-group">
+    <span class="mute mono">{{ countLabel() }}</span>
+    <button class="btn" type="button" [disabled]="!selection()" (click)="copyCell()">Copy cell</button>
+    <button class="btn btn-primary" type="button" [disabled]="!total()" (click)="copyTable()">Copy table</button>
+  </div>
+</div>
+@if (error()) { <div class="banner">{{ error() }}</div> }
+
+<section class="panel panel-flush">
+  <div #viewport class="table-scroll table-viewport" (scroll)="onScroll(viewport)">
+    <table class="tbl tbl-min tbl-virtual" [style.min-width.px]="width()">
+      <colgroup>
+        @for (v of views(); track v.name) {
+          @if (v.width) { <col [style.width.px]="v.width"> } @else { <col> }
+        }
+      </colgroup>
+      <thead>
+        <tr>
+          @for (v of views(); track v.name) {
+            <th class="is-sortable" [class.r]="v.right" tabindex="0" [title]="v.name" [attr.aria-sort]="sort()?.column === v.name ? (sort()!.dir === 'asc' ? 'ascending' : 'descending') : null"
+              (click)="toggleSort(v.name)" (keydown.enter)="toggleSort(v.name)">{{ v.name }}{{ sortMark(v.name) }}</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @if (padTop()) { <tr class="spacer"><td [attr.colspan]="views().length" [style.height.px]="padTop()"></td></tr> }
+        @for (r of rows(); track r.index) {
+          <tr [class.is-selected]="selection()?.row === r.index">
+            @for (v of views(); track v.name) {
+              @if (r.row) {
+                <td class="is-cell" [class.r]="v.right" [class.mono]="v.mono" [class.is-cell-selected]="selection()?.row === r.index && selection()?.column === v.name"
+                  [title]="r.row[v.name] ?? 'NULL'" (click)="select(r.index, v.name)">{{ r.row[v.name] ?? '' }}</td>
+              } @else {
+                <td><div class="skeleton"></div></td>
+              }
+            }
+          </tr>
+        }
+        @if (padBottom()) { <tr class="spacer"><td [attr.colspan]="views().length" [style.height.px]="padBottom()"></td></tr> }
+        @if (total() === 0) {
+          <tr><td [attr.colspan]="views().length || 1" class="mute">No rows{{ filter() ? ' match the filter' : '' }}.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="row-between mute">
+  <span>{{ notice() ?? (total() ? 'Rows ' + (range().start + 1).toLocaleString('en-US') + '–' + range().end.toLocaleString('en-US') + ' are on screen. The list is virtualized and loads pages as you scroll.' : '') }}</span>
+  <span class="mono">{{ selectedRef() }}</span>
+</div>

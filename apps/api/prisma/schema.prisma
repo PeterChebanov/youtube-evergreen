@@ -1,0 +1,320 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+model Channel {
+  id                String        @id @default(cuid())
+  youtubeChannelId  String        @unique @map("youtube_channel_id")
+  channelName       String        @map("channel_name")
+  youtubeUrl        String        @map("youtube_url")
+  description       String?
+  subscribers       Int?
+  uploadsPlaylistId String?       @map("uploads_playlist_id")
+  researchStatus    String        @default("collecting") @map("research_status")
+  analysisError     String?       @map("analysis_error")
+  lastResearchedAt  DateTime?     @map("last_researched_at")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+  videos            Video[]
+  authorStyles      AuthorStyle[]
+  researchJobs      ResearchJob[]
+
+  @@map("channels")
+}
+
+model ResearchJob {
+  id            String    @id @default(cuid())
+  channelId     String    @map("channel_id")
+  channel       Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  type          String
+  stage         String    @default("collect")
+  estimatedCost Float?    @map("estimated_cost")
+  progress      Int       @default(0)
+  status        String    @default("queued")
+  cursor        String?
+  total         Int       @default(0)
+  processed     Int       @default(0)
+  newVideos     Int       @default(0) @map("new_videos")
+  pausedUntil   DateTime? @map("paused_until")
+  error         String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([channelId])
+  @@map("research_jobs")
+}
+
+model ApiQuotaUsage {
+  id        String   @id @default(cuid())
+  usageDate DateTime @unique @map("usage_date") @db.Date
+  units     Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("api_quota_usage")
+}
+
+model Video {
+  id               String             @id @default(cuid())
+  channelId        String             @map("channel_id")
+  channel          Channel            @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  youtubeVideoId   String             @unique @map("youtube_video_id")
+  title            String
+  url              String
+  publishedAt      DateTime           @map("published_at")
+  viewsAtResearch  Int                @map("views_at_research")
+  durationSec      Int                @map("duration_sec")
+  description      String?
+  chaptersStatus   String             @default("unavailable") @map("chapters_status")
+  transcript       String?
+  transcriptStatus String             @default("empty") @map("transcript_status")
+  structureStatus  String             @default("none") @map("structure_status")
+  researchedAt     DateTime           @default(now()) @map("researched_at")
+  chapters         Chapter[]
+  snapshots        ResearchSnapshot[]
+  analysis         VideoAnalysis?
+
+  @@index([channelId])
+  @@map("videos")
+}
+
+model Chapter {
+  id             String       @id @default(cuid())
+  videoId        String       @map("video_id")
+  video          Video        @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  title          String
+  startTimestamp String       @map("start_timestamp")
+  endTimestamp   String?      @map("end_timestamp")
+  order          Int
+  source         String       @default("youtube")
+  subsections    Subsection[]
+
+  @@index([videoId])
+  @@map("chapters")
+}
+
+model Subsection {
+  id          String  @id @default(cuid())
+  chapterId   String  @map("chapter_id")
+  chapter     Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  order       Int
+  timestamp   String?
+
+  @@index([chapterId])
+  @@map("subsections")
+}
+
+model ResearchSnapshot {
+  id           String   @id @default(cuid())
+  videoId      String   @map("video_id")
+  video        Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  researchedAt DateTime @default(now()) @map("researched_at")
+  views        Int
+
+  @@unique([videoId, researchedAt])
+  @@map("research_snapshots")
+}
+
+model Genre {
+  id                     String          @id @default(cuid())
+  name                   String          @unique
+  focus                  String
+  retentionBestPractices String?         @map("retention_best_practices")
+  topAuthors             Json?           @map("top_authors")
+  promptModule           String?         @map("prompt_module")
+  status                 String          @default("approved")
+  projects               Project[]
+  videoAnalyses          VideoAnalysis[]
+  myVideos               MyVideo[]
+
+  @@map("genres")
+}
+
+model VideoAnalysis {
+  id                   String                       @id @default(cuid())
+  videoId              String                       @unique @map("video_id")
+  video                Video                        @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  genreId              String?                      @map("genre_id")
+  genre                Genre?                       @relation(fields: [genreId], references: [id])
+  contentType          String?                      @map("content_type")
+  topic                String?
+  subtopic             String?
+  format               String?
+  titleType            String?                      @map("title_type")
+  hook                 String?
+  embedding            Unsupported("vector(1536)")?
+  transcriptAnalysis   Json?                        @map("transcript_analysis")
+  transcriptAnalyzedAt DateTime?                    @map("transcript_analyzed_at")
+  analyzedAt           DateTime                     @default(now()) @map("analyzed_at")
+
+  @@map("video_analyses")
+}
+
+model AuthorStyle {
+  id              String   @id @default(cuid())
+  channelId       String   @map("channel_id")
+  channel         Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  technique       String
+  description     String
+  exampleVideoIds String[] @map("example_video_ids")
+  order           Int
+
+  @@index([channelId])
+  @@map("author_styles")
+}
+
+model ChannelStyle {
+  id             String   @id @default(cuid())
+  version        Int      @unique
+  voice          String
+  themes         String
+  techniques     Json
+  retentionRules String   @map("retention_rules")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("channel_styles")
+}
+
+model Project {
+  id                     String          @id @default(cuid())
+  title                  String
+  entryType              String          @map("entry_type")
+  language               String          @default("ru")
+  targetDurationMin      Int             @map("target_duration_min")
+  genreId                String?         @map("genre_id")
+  genre                  Genre?          @relation(fields: [genreId], references: [id])
+  authorOverlayChannelId String?         @map("author_overlay_channel_id")
+  status                 String          @default("draft")
+  useDatabase            Boolean         @default(false) @map("use_database")
+  sourceVideoIds         String[]        @default([]) @map("source_video_ids")
+  sourceVideoSnapshot    Json?           @map("source_video_snapshot")
+  shallowResearch        Json?           @map("shallow_research")
+  toneReferenceVideoIds  String[]        @default([]) @map("tone_reference_video_ids")
+  topic                  String?
+  subtopic               String?
+  createdAt              DateTime        @default(now()) @map("created_at")
+  updatedAt              DateTime        @updatedAt @map("updated_at")
+  adviceRuns             AdviceRun[]
+  planVersions           PlanVersion[]
+  researchFacts          ResearchFact[]
+  scriptChapters         ScriptChapter[]
+  myVideo                MyVideo?
+
+  @@map("projects")
+}
+
+model AdviceRun {
+  id        String   @id @default(cuid())
+  projectId String?  @map("project_id")
+  project   Project? @relation(fields: [projectId], references: [id])
+  filters   Json
+  results   Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("advice_runs")
+}
+
+model PlanVersion {
+  id        String   @id @default(cuid())
+  projectId String   @map("project_id")
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  version   Int
+  content   Json
+  feedback  String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([projectId, version])
+  @@map("plan_versions")
+}
+
+model ResearchFact {
+  id               String   @id @default(cuid())
+  projectId        String   @map("project_id")
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  planChapterOrder Int      @map("plan_chapter_order")
+  iteration        Int      @default(1)
+  text             String
+  sourceUrl        String   @map("source_url")
+  sourceTitle      String?  @map("source_title")
+  relatedFacts     Json     @default("[]") @map("related_facts")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([projectId, planChapterOrder])
+  @@map("research_facts")
+}
+
+model ScriptChapter {
+  id           String   @id @default(cuid())
+  projectId    String   @map("project_id")
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  chapterOrder Int      @map("chapter_order")
+  version      Int      @default(1)
+  text         String   @default("")
+  summary      String?
+  feedback     String?
+  status       String   @default("draft")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([projectId, chapterOrder, version])
+  @@map("script_chapters")
+}
+
+model MyVideo {
+  id           String                       @id @default(cuid())
+  projectId    String                       @unique @map("project_id")
+  project      Project                      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title        String
+  language     String
+  durationMin  Int?                         @map("duration_min")
+  topic        String
+  subtopic     String?
+  genreId      String?                      @map("genre_id")
+  genre        Genre?                       @relation(fields: [genreId], references: [id])
+  chaptersJson Json                         @map("chapters_json")
+  scriptText   String                       @map("script_text")
+  embedding    Unsupported("vector(1536)")?
+  finishedAt   DateTime                     @default(now()) @map("finished_at")
+
+  @@map("my_videos")
+}
+
+model LlmCall {
+  id           String   @id @default(cuid())
+  promptName   String   @map("prompt_name")
+  model        String
+  inputTokens  Int      @map("input_tokens")
+  outputTokens Int      @map("output_tokens")
+  projectId    String?  @map("project_id")
+  dbToolsUsed  String[] @default([]) @map("db_tools_used")
+  succeeded    Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("llm_calls")
+}
+
+model JobRecord {
+  id        String   @id @default(cuid())
+  type      String
+  status    String
+  progress  Int      @default(0)
+  cursor    Int      @default(0)
+  total     Int      @default(100)
+  payload   Json?
+  error     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("job_records")
+}

@@ -1,0 +1,76 @@
+<div class="page-head">
+  <div>
+    <h1>Style and genres</h1>
+    <p class="sub">Our channel voice, versioned on every save, and the genre modules Writer uses.</p>
+  </div>
+  <div class="actions">
+    <button class="btn" type="button" [disabled]="busy()" (click)="draft()">Draft from authors</button>
+    <button class="btn btn-primary" type="button" [disabled]="busy() || !canSave()" (click)="saveStyle()">Save version</button>
+  </div>
+</div>
+@if (status.status()?.styleUpdateSuggested) {
+  <div class="banner">Channels were researched after the last style version. Draft an update from the new author styles.</div>
+}
+@if (error()) { <div class="banner">{{ error() }}</div> }
+@if (notice()) { <div class="banner">{{ notice() }}</div> }
+
+<div class="grid grid-subs">
+  <section class="panel">
+    <div class="panel-head"><h2>Channel style</h2><span class="meta">{{ versionMeta() }}</span></div>
+    <div class="field-group">
+      <label class="mute" for="style-voice">Voice</label>
+      <textarea class="field field-tall" id="style-voice" [value]="voice()" (input)="voice.set($any($event.target).value)"
+        placeholder="Calm, precise, second person; short sentences before a reveal."></textarea>
+      <label class="mute" for="style-themes">Themes</label>
+      <textarea class="field" id="style-themes" [value]="themes()" (input)="themes.set($any($event.target).value)"
+        placeholder="Hidden systems behind everyday things; history that explains the present."></textarea>
+      <label class="mute" for="style-techniques">Techniques, one per line</label>
+      <textarea class="field field-tall" id="style-techniques" [value]="techniques()" (input)="techniques.set($any($event.target).value)"
+        placeholder="Cold open — a concrete scene before any context"></textarea>
+      <label class="mute" for="style-retention">Retention rules</label>
+      <textarea class="field field-tall" id="style-retention" [value]="retention()" (input)="retention.set($any($event.target).value)"
+        placeholder="An open question returns every 8–10 minutes."></textarea>
+    </div>
+  </section>
+
+  <section class="panel panel-flush">
+    <div class="panel-head"><h2>Genres</h2>
+      <button class="btn btn-sm" type="button" [disabled]="busy()" (click)="recompute()">Recompute</button></div>
+    @if (genres(); as list) {
+      <div class="table-scroll">
+        <table class="tbl">
+          <colgroup><col style="width:34%"><col><col style="width:72px"><col style="width:96px"></colgroup>
+          <thead><tr><th>Genre</th><th>Top authors</th><th class="r">Videos</th><th></th></tr></thead>
+          <tbody>
+            @for (g of list; track g.id) {
+              <tr>
+                <td>
+                  <div class="cell-title">{{ g.name }}</div>
+                  <div class="cell-sub">{{ g.focus }}</div>
+                  @if (g.status === 'new') { <span class="pill pill-warn">new</span> }
+                </td>
+                <td class="mute">{{ (g.topAuthors ?? []).map(a => a.channelName).join(', ') || '—' }}</td>
+                <td class="r num">{{ g.videoCount }}</td>
+                <td>
+                  <div class="actions">
+                    @if (g.status === 'new') {
+                      <button class="btn btn-sm" type="button" [disabled]="busy()" (click)="setGenreStatus(g, 'approved')">Approve</button>
+                    }
+                    <button class="btn btn-sm" type="button" [disabled]="busy()" (click)="removeGenre(g)">Delete</button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+    <form class="urlbar" style="padding:10px 12px" (submit)="$event.preventDefault(); addGenre()">
+      <input class="field" type="text" aria-label="Genre name" placeholder="Urbanism" style="flex:0 1 30%"
+        [value]="newName()" (input)="newName.set($any($event.target).value)">
+      <input class="field" type="text" aria-label="Genre focus" placeholder="How cities are planned and who pays for it"
+        [value]="newFocus()" (input)="newFocus.set($any($event.target).value)">
+      <button class="btn" type="submit" [disabled]="busy()">Add genre</button>
+    </form>
+  </section>
+</div>

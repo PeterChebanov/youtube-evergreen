@@ -1,0 +1,110 @@
+<div class="page-head">
+  <div>
+    <h1>Research</h1>
+    <p class="sub">Add a reference channel. Code collects every long-form video, then AI analyzes each one cheaply.</p>
+  </div>
+  <div class="actions"><button class="btn" type="button" (click)="refreshViews()">Refresh views</button></div>
+</div>
+
+<form class="urlbar" (submit)="$event.preventDefault(); addChannel()">
+  <input class="field" id="research-url" type="text" placeholder="https://www.youtube.com/@channel-handle" aria-label="Channel URL"
+    [value]="url()" (input)="url.set($any($event.target).value); urlError.set(null)">
+  <button class="btn btn-primary" type="submit" [disabled]="busy()">Add channel</button>
+</form>
+@if (urlError()) {
+  <div class="field-error" role="alert">{{ urlError() }}</div>
+}
+@if (banner()) {
+  <div class="banner">{{ banner() }}</div>
+}
+
+@if (channels() === null) {
+  <section class="panel">
+    <div class="stack"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+  </section>
+} @else if (!channels()!.length) {
+  <div class="empty"><b>No channels yet</b>Paste a YouTube channel URL above to start.</div>
+} @else {
+  <div class="grid grid-research">
+    <section class="panel panel-flush">
+      <div class="panel-head"><h2>Channels</h2><span class="meta">{{ meta() }}</span></div>
+      <div class="table-scroll">
+        <table class="tbl">
+          <colgroup><col style="width:44%"><col style="width:17%"><col style="width:39%"></colgroup>
+          <thead><tr><th>Channel</th><th>State</th><th>Progress</th></tr></thead>
+          <tbody>
+            @for (row of rows(); track row.channel.id) {
+              <tr class="is-clickable" tabindex="0" [class.is-selected]="row.channel.id === selected()?.id"
+                (click)="selectedId.set(row.channel.id)" (keydown.enter)="selectedId.set(row.channel.id)">
+                <td>
+                  <div class="cell-title">{{ row.channel.channelName }}</div>
+                  <div class="cell-sub">{{ row.view.sub }}</div>
+                  @if (row.view.retryJobId) {
+                    <div class="actions" style="margin-top:4px">
+                      <button class="btn btn-sm" type="button" (click)="retry(row.view.retryJobId!, $event)">Retry</button>
+                    </div>
+                  }
+                </td>
+                <td><span [class]="'pill ' + row.view.pill">{{ row.view.state }}</span></td>
+                <td>
+                  <div class="progress-row">
+                    <div [class]="'progress ' + row.view.bar"><i [style.width.%]="row.view.percent"></i></div>
+                    <span class="num">{{ row.view.percent }}%</span>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="stack">
+      <section class="panel">
+        <div class="panel-head"><h2>Jobs</h2><span class="meta">BullMQ</span></div>
+        @if (log().length) {
+          <ul class="log">
+            @for (line of log(); track $index) {
+              <li><b [class]="line.cls">{{ line.state }}</b><span>{{ line.text }}</span></li>
+            }
+          </ul>
+        } @else {
+          <p class="mute">No research job for this channel.</p>
+        }
+      </section>
+
+      @if (selected(); as c) {
+        <section class="panel">
+          <div class="panel-head">
+            <h2>{{ c.channelName }} · library</h2>
+            @if (c.researchStatus === 'ready' || c.researchStatus === 'partial') {
+              <button class="btn btn-sm" type="button" (click)="rerun(c.id)">{{ c.researchStatus === 'partial' ? 'Research channel' : 'Re-run' }}</button>
+            }
+          </div>
+          @if (stats(); as s) {
+            <div class="stats">
+              @for (stat of s; track stat.l) {
+                <div><span class="stat-n">{{ stat.n }}</span><span class="stat-l">{{ stat.l }}</span></div>
+              }
+            </div>
+          } @else {
+            <div class="stack"><div class="skeleton"></div><div class="skeleton"></div></div>
+          }
+        </section>
+
+        <section class="panel">
+          <div class="panel-head"><h2>AuthorStyle · {{ c.channelName }}</h2></div>
+          @if (detail()?.authorStyles?.length) {
+            <ul class="kv">
+              @for (s of detail()!.authorStyles; track s.id) {
+                <li><span>{{ s.technique }}</span><div>{{ s.description }}</div></li>
+              }
+            </ul>
+          } @else {
+            <p class="mute">{{ c.researchStatus === 'partial' ? 'Partial channels get no author style.' : 'Written after the analysis finishes.' }}</p>
+          }
+        </section>
+      }
+    </div>
+  </div>
+}

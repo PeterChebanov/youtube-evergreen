@@ -1,0 +1,1 @@
+The author refers to our research library. Data from the library takes priority over general knowledge: look it up with the database tools when they are offered, and name in `dbDataUsed` the videos or channels you relied on. The tools are read-only. If the library has nothing relevant, say so in `dbDataUsed` as an empty list and continue from the other inputs.

@@ -1,0 +1,61 @@
+<div class="page-head">
+  <div>
+    <h1>My Videos</h1>
+    <p class="sub">Finished scripts. Advice skips these topics, including close matches found by similarity.</p>
+  </div>
+  <div class="actions"><button class="btn" type="button" [disabled]="!selected()" (click)="exportSelected()">Export Markdown</button></div>
+</div>
+@if (error()) { <div class="banner">{{ error() }}</div> }
+
+@if (videos() === null) {
+  <section class="panel"><div class="stack"><div class="skeleton"></div><div class="skeleton"></div></div></section>
+} @else {
+  <div class="grid grid-videos">
+    <section class="panel panel-flush">
+      <div class="panel-head"><h2>Scripts</h2><span class="meta">{{ meta() }}</span></div>
+      @if (rows().length) {
+        <div class="table-scroll">
+          <table class="tbl">
+            <colgroup><col style="width:44%"><col style="width:17%"><col style="width:12%"><col style="width:27%"></colgroup>
+            <thead><tr><th>Title</th><th>Project</th><th>Length</th><th>Status</th></tr></thead>
+            <tbody>
+              @for (r of rows(); track r.key) {
+                <tr class="is-clickable" tabindex="0" [class.is-selected]="r.key === selected()?.key" (click)="selectedKey.set(r.key)" (keydown.enter)="selectedKey.set(r.key)">
+                  <td><div class="cell-title">{{ r.title }}</div><div class="cell-sub">{{ r.sub }}</div></td>
+                  <td>{{ r.project }}</td>
+                  <td class="num">{{ r.length }}</td>
+                  <td>
+                    @if (r.finished) {
+                      <div class="chips"><span class="pill pill-ok">finished</span><span class="pill pill-ok">indexed</span></div>
+                    } @else {
+                      <span class="pill">draft</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <div style="padding:0 12px 12px"><div class="empty"><b>No scripts yet</b>Finished scripts land here after Send to My Videos in Writer.</div></div>
+      }
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Topic memory</h2><span class="meta">pgvector</span></div>
+      <ul class="kv">
+        <li><span>Indexed</span><div class="num">{{ memory()?.indexed ?? 0 }} of {{ memory()?.total ?? 0 }} scripts</div></li>
+        <li><span>Used by</span><div>Advice, to avoid repeated topics</div></li>
+        <li><span>Closest pair</span>
+          <div>
+            @if (memory()?.closestPair; as pair) {
+              “{{ pair.a.title }}” and “{{ pair.b.title }}” · similarity {{ pair.similarity.toFixed(2) }}
+            } @else {
+              Needs at least two finished scripts
+            }
+          </div>
+        </li>
+      </ul>
+    </section>
+  </div>
+}

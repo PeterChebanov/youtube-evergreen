@@ -1,0 +1,111 @@
+<div class="page-head">
+  <div>
+    <h1>Fact research</h1>
+    <p class="sub">Web research for every sub-chapter of the approved plan. Every fact carries a URL.</p>
+  </div>
+  <div class="actions">
+    <button class="btn" type="button" [disabled]="!editable() || running()" (click)="refineOpen.set(!refineOpen())">Refine</button>
+    <button class="btn btn-primary" type="button" [disabled]="!editable() || running() || working() || !state()?.facts?.length" (click)="approve()">Send to writer</button>
+  </div>
+</div>
+
+@if (!project()) {
+  <div class="empty"><b>No project selected</b>Pick a topic in Advice or send a custom request.</div>
+} @else if (!started()) {
+  <div class="empty"><b>The plan is not approved yet</b>Fact research starts when you press Send to research on the Plan tab.</div>
+} @else {
+  @if (loadError() || actionError()) {
+    <div class="banner">{{ actionError() || loadError() }}</div>
+  }
+  @if (state()?.status === 'failed') {
+    <div class="banner row-between"><span>Research failed for some chapters. Their facts are missing.</span>
+      <button class="btn btn-sm" type="button" [disabled]="working()" (click)="retry()">Retry</button></div>
+  }
+  @if (!editable() && state()) {
+    <div class="banner">Facts are handed to the writer and can no longer change.</div>
+  }
+
+  @if (refineOpen()) {
+    <form class="refine" (submit)="$event.preventDefault(); refine()">
+      <input class="field" type="text" aria-label="Refine the facts" placeholder="Refine: find primary sources, add a counter-example…"
+        [value]="feedback()" (input)="feedback.set($any($event.target).value)">
+      <label esCheck [(checked)]="onlyChapter" style="align-self:center;flex:none">Only chapter {{ current()?.order }}</label>
+      <button class="btn" type="submit" [disabled]="working()">Refine</button>
+    </form>
+  }
+
+  <div class="grid grid-facts">
+    <section class="panel">
+      <div class="panel-head"><h2>Chapters</h2><span class="meta">{{ doneCount() }} / {{ chapters().length }} done</span></div>
+      @if (state()) {
+        <div class="chlist">
+          @for (c of chapters(); track c.order) {
+            <a tabindex="0" [class.is-active]="c.order === current()?.order" [title]="c.title"
+              (click)="selectedOrder.set(c.order)" (keydown.enter)="selectedOrder.set(c.order)"><b>{{ c.order }} · {{ c.title }}</b><span>{{ c.state }}</span></a>
+          }
+        </div>
+      } @else {
+        <div class="stack"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+      }
+    </section>
+
+    <div class="stack">
+      <section class="panel panel-flush">
+        <div class="panel-head"><h2>Facts · chapter {{ current()?.order }}</h2><span class="meta">{{ meta() }}</span></div>
+        @if (rows().length) {
+          <div class="table-scroll">
+            <table class="tbl">
+              <colgroup><col style="width:34px"><col style="width:42%"><col style="width:28%"><col></colgroup>
+              <thead><tr><th>#</th><th>Fact</th><th>Source</th><th>Connections</th></tr></thead>
+              <tbody>
+                @for (row of rows(); track row.fact.id) {
+                  <tr>
+                    <td class="num mute">{{ row.n }}</td>
+                    <td>{{ row.fact.text }}</td>
+                    <td><a class="mono url-link" [href]="row.fact.sourceUrl" target="_blank" rel="noopener" [title]="row.fact.sourceTitle ?? row.fact.sourceUrl">{{ shortUrl(row.fact.sourceUrl) }}</a></td>
+                    <td>
+                      <div class="chips">
+                        @for (r of row.relations; track $index) { <span class="chip">{{ r }}</span> }
+                      </div>
+                      @if (editable()) {
+                        <button class="btn btn-sm" type="button" style="margin-top:4px" [disabled]="working()" (click)="removeFact(row.fact.id)">Remove</button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else if (current()?.state === 'run' || current()?.state === 'queued') {
+          <div style="padding:0 12px 12px" class="stack"><div class="skeleton"></div><div class="skeleton"></div></div>
+        } @else if (current()) {
+          <div style="padding:0 12px 12px">
+            <div class="empty"><b>No sourced facts found</b>Search returned nothing that could be verified.
+              @if (editable()) {
+                <div class="actions" style="justify-content:center;margin-top:12px">
+                  <button class="btn" type="button" [disabled]="working() || running()" (click)="searchAgain(current()!.order)">Search again</button>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </section>
+
+      @if (editable() && current()) {
+        <section class="panel">
+          <div class="panel-head"><h2>Add a fact by hand</h2><span class="meta">chapter {{ current()!.order }}</span></div>
+          <form class="field-group" (submit)="$event.preventDefault(); addFact()">
+            <input class="field" type="text" aria-label="Fact" placeholder="The census counts residents by registration, not by where they live."
+              [value]="newText()" (input)="newText.set($any($event.target).value)">
+            <div class="urlbar">
+              <input class="field" type="text" aria-label="Source URL" placeholder="https://example.org/census-method"
+                [value]="newUrl()" (input)="newUrl.set($any($event.target).value)">
+              <button class="btn" type="submit" [disabled]="working()">Add fact</button>
+            </div>
+            @if (addError()) { <div class="field-error" role="alert">{{ addError() }}</div> }
+          </form>
+        </section>
+      }
+    </div>
+  </div>
+}

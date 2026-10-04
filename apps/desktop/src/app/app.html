@@ -1,0 +1,43 @@
+<div class="app" id="app">
+  <nav class="topnav" aria-label="Primary">
+    <a class="brand" href="#research" (click)="$event.preventDefault(); nav.go('research')">evergreen/studio</a>
+    <div class="tabs" role="tablist">
+      @for (t of tabs; track t.id) {
+        <a class="tab" role="tab" tabindex="0" [attr.data-screen]="t.id" [attr.data-key]="'g ' + t.key"
+          [class.is-active]="nav.screen() === t.id" [attr.aria-selected]="nav.screen() === t.id"
+          (click)="nav.go(t.id)" (keydown.enter)="nav.go(t.id)" (keydown.space)="$event.preventDefault(); nav.go(t.id)">{{ t.label }}</a>
+      }
+    </div>
+    <div class="nav-right">
+      <button class="kbtn" type="button" (click)="palette.set(true)">Jump · ⌘K</button>
+      <es-project-menu />
+    </div>
+  </nav>
+
+  <main class="main">
+    @switch (nav.screen()) {
+      @case ('research') { <section esResearch></section> }
+      @case ('advice') { <section esAdvice></section> }
+      @case ('plan') { <section esPlan></section> }
+      @case ('facts') { <section esFacts></section> }
+      @case ('writer') { <section esWriter></section> }
+      @case ('subtitles') { <section esSubtitles></section> }
+      @case ('database') { <section esDatabase></section> }
+      @case ('videos') { <section esVideos></section> }
+      @case ('style') { <section esStyle></section> }
+    }
+  </main>
+
+  <footer class="statusbar">
+    <span><span class="dot" [class.is-bad]="!status.reachable()">●</span> {{ status.reachable() ? 'API connected' : 'API unreachable' }}</span>
+    <span>{{ queues() }}</span>
+    <span>{{ quota() }}</span>
+    <span>{{ spend() }}</span>
+    <span>{{ videos() }}</span>
+  </footer>
+</div>
+
+@if (palette()) {
+  <es-palette (closed)="palette.set(false)" />
+}
+<es-dialog-host />

@@ -1,0 +1,42 @@
+<section class="screen" id="screen-database" data-screen="database">
+  <div class="page-head">
+    <div>
+      <h1>Database</h1>
+      <p class="sub">Read-only view, shown the way it is stored.</p>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <span class="select">Table: Video ▾</span>
+      <input class="field" id="db-filter" type="text" placeholder="Filter rows" aria-label="Filter rows" style="width:220px">
+    </div>
+    <div class="toolbar-group">
+      <span class="mute mono">14,382 rows · read-only</span>
+      <button class="btn" type="button">Copy cell</button>
+      <button class="btn btn-primary" type="button">Copy table</button>
+    </div>
+  </div>
+
+  <section class="panel panel-flush">
+    <div class="table-scroll">
+      <table class="tbl tbl-min">
+        <colgroup><col style="width:88px"><col style="width:156px"><col><col style="width:108px"><col style="width:72px"><col style="width:100px"><col style="width:96px"><col style="width:100px"><col style="width:100px"></colgroup>
+        <thead><tr><th>video_id</th><th>channel</th><th>title</th><th>published</th><th>length</th><th class="r">views</th><th class="r">chapters</th><th>genre</th><th>status</th></tr></thead>
+        <tbody>
+          <tr><td class="mono nowrap">v_0001</td><td class="ell" title="Reference channel 1">Reference channel 1</td><td class="ell" title="Почему закрываются заводы">Почему закрываются заводы</td><td class="mono nowrap">2023-04-11</td><td class="mono nowrap">54:12</td><td class="r mono nowrap">1,912,400</td><td class="r mono nowrap">8</td><td>Economics</td><td><span class="pill pill-ok">analyzed</span></td></tr>
+          <tr><td class="mono nowrap">v_0002</td><td class="ell" title="Reference channel 2">Reference channel 2</td><td class="ell" title="Город, который не ждал">Город, который не ждал</td><td class="mono nowrap">2022-11-02</td><td class="mono nowrap">49:40</td><td class="r mono nowrap">1,204,900</td><td class="r mono nowrap">7</td><td>Urbanism</td><td><span class="pill pill-ok">analyzed</span></td></tr>
+          <tr class="is-selected"><td class="mono nowrap">v_0003</td><td class="ell" title="Reference channel 1">Reference channel 1</td><td class="ell" title="Кому принадлежит набережная">Кому принадлежит набережная</td><td class="mono nowrap">2024-01-19</td><td class="mono nowrap">57:03</td><td class="r mono nowrap">988,100</td><td class="r mono nowrap">9</td><td>Urbanism</td><td><span class="pill pill-ok">analyzed</span></td></tr>
+          <tr><td class="mono nowrap">v_0004</td><td class="ell" title="Reference channel 3">Reference channel 3</td><td class="ell" title="Цена дешёвого билета">Цена дешёвого билета</td><td class="mono nowrap">2021-08-27</td><td class="mono nowrap">46:55</td><td class="r mono nowrap">2,430,000</td><td class="r mono nowrap">6</td><td>Economics</td><td><span class="pill pill-ok">analyzed</span></td></tr>
+          <tr><td class="mono nowrap">v_0005</td><td class="ell" title="Reference channel 3">Reference channel 3</td><td class="ell" title="Последний рабочий посёлок">Последний рабочий посёлок</td><td class="mono nowrap">2024-06-05</td><td class="mono nowrap">52:18</td><td class="r mono nowrap">641,700</td><td class="r mono nowrap">8</td><td>Society</td><td><span class="pill pill-warn">pending</span></td></tr>
+          <tr><td class="mono nowrap">v_0006</td><td class="ell" title="Reference channel 4">Reference channel 4</td><td class="ell" title="Как устроен городской бюджет">Как устроен городской бюджет</td><td class="mono nowrap">2023-09-14</td><td class="mono nowrap">61:21</td><td class="r mono nowrap">402,300</td><td class="r mono nowrap">10</td><td>Politics</td><td><span class="pill pill-ok">analyzed</span></td></tr>
+          <tr><td class="mono nowrap">v_0007</td><td class="ell" title="Reference channel 2">Reference channel 2</td><td class="ell" title="Дома, которые никто не строил">Дома, которые никто не строил</td><td class="mono nowrap">2022-03-30</td><td class="mono nowrap">44:07</td><td class="r mono nowrap">1,577,000</td><td class="r mono nowrap">7</td><td>Urbanism</td><td><span class="pill pill-ok">analyzed</span></td></tr>
+          <tr><td class="mono nowrap">v_0008</td><td class="ell" title="Reference channel 1">Reference channel 1</td><td class="ell" title="Откуда берутся пробки">Откуда берутся пробки</td><td class="mono nowrap">2020-12-08</td><td class="mono nowrap">51:44</td><td class="r mono nowrap">3,105,800</td><td class="r mono nowrap">8</td><td>Urbanism</td><td><span class="pill pill-ok">analyzed</span></td></tr>
+          <tr><td class="mono nowrap">v_0009</td><td class="ell" title="Reference channel 4">Reference channel 4</td><td class="ell" title="Что случилось с районом за год">Что случилось с районом за год</td><td class="mono nowrap">2025-02-21</td><td class="mono nowrap">48:30</td><td class="r mono nowrap">215,400</td><td class="r mono nowrap">6</td><td>Society</td><td><span class="pill pill-warn">pending</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="row-between mute"><span>Rows 1–9 are loaded. The list is virtualized and scrolls through thousands of rows.</span><span class="mono">selected: v_0003.title</span></div>
+</section>

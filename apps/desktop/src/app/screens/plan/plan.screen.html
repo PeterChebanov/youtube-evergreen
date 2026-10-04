@@ -1,0 +1,98 @@
+@if (project(); as p) {
+  <div class="page-head">
+    <div>
+      <h1>Plan · {{ p.title }}</h1>
+      <p class="sub">{{ subtitle() }}</p>
+    </div>
+    <div class="actions">
+      @if ((versions()?.length ?? 0) > 1) {
+        <label class="select">Version:
+          <select aria-label="Plan version" (change)="versionIndex.set(+$any($event.target).value)">
+            @for (v of versions(); track v.version; let i = $index) {
+              <option [value]="i" [selected]="i === versionIndex()">v{{ v.version }}{{ i === 0 ? ' (latest)' : '' }}</option>
+            }
+          </select> ▾</label>
+      }
+      <button class="btn btn-primary" type="button" [disabled]="!editable() || !versions()?.length || !!busy() || approving()" (click)="approve()">Send to research</button>
+    </div>
+  </div>
+
+  @if (!editable()) {
+    <div class="banner">The plan is approved. Facts are researched on the Fact research tab.</div>
+  }
+  @if (state()?.error || actionError()) {
+    <div class="banner row-between"><span>{{ state()?.error || actionError() }}</span>
+      @if (state()?.error) { <button class="btn btn-sm" type="button" (click)="tryAgain()">Try again</button> }
+    </div>
+  }
+
+  @if (!busy() && versions() && !versions()!.length) {
+    <div class="empty"><b>No plan yet</b>Generate the first plan from the topic and the library.
+      <div class="actions" style="justify-content:center;margin-top:12px">
+        <button class="btn btn-primary" type="button" [disabled]="!editable()" (click)="generate()">Generate plan</button>
+      </div>
+    </div>
+  } @else {
+    <section class="panel">
+      <div class="panel-head"><h2>Timeline</h2>
+        <span class="meta">{{ busy() === 'generating' ? 'generating' : plan() ? plan()!.chapters.length + ' chapters · ' + totalLabel() : '' }}</span></div>
+      @if (plan() && !busy()) {
+        <div class="timeline" role="img" [attr.aria-label]="'Chapter timeline, ' + plan()!.targetDurationMin + ' minutes'">
+          @for (row of chapters(); track row.c.order) {
+            <div [style.flex]="row.c.lengthMin" [title]="row.c.title">{{ row.c.title }}</div>
+          }
+          @for (m of markers(); track m.label) {
+            <span class="tl-mark" [class]="'tl-mark ' + m.cls" [style.left]="m.left" [style.right]="m.right">{{ m.label }}</span>
+          }
+        </div>
+      } @else {
+        <div class="skeleton" style="height:34px;margin-top:22px"></div>
+      }
+    </section>
+
+    <section class="panel panel-flush">
+      <div class="panel-head"><h2>Chapters</h2><span class="meta">subtopics · timing · hooks</span></div>
+      <div class="table-scroll">
+        <table class="tbl">
+          <colgroup><col style="width:70px"><col style="width:70px"><col style="width:36%"><col></colgroup>
+          <thead><tr><th>Start</th><th>Length</th><th>Chapter</th><th>Hooks</th></tr></thead>
+          <tbody>
+            @if (busy() || !plan()) {
+              @for (n of [1, 2, 3, 4, 5]; track n) {
+                <tr><td colspan="4"><div class="skeleton"></div></td></tr>
+              }
+            } @else {
+              @for (row of chapters(); track row.c.order) {
+                <tr>
+                  <td class="num">{{ row.start }}</td>
+                  <td class="num">{{ row.length }}</td>
+                  <td><div class="cell-title">{{ row.c.title }}</div><div class="cell-sub">{{ row.c.description }}</div></td>
+                  <td>
+                    <div class="chips">
+                      @for (chip of row.chips; track $index) {
+                        <span class="chip" [class.chip-riddle]="chip.riddle">{{ chip.text }}</span>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    @if (plan()?.dbDataUsed?.length) {
+      <p class="mute">Library data used: {{ plan()!.dbDataUsed.join(', ') }}</p>
+    }
+
+    <form class="refine" (submit)="$event.preventDefault(); refine()">
+      <input class="field" id="plan-refine" type="text" placeholder="Refine the plan: shorten chapter 3, add a counter-example…" aria-label="Refine the plan"
+        [value]="feedback()" (input)="feedback.set($any($event.target).value)" [disabled]="!editable()">
+      <button class="btn" type="submit" [disabled]="!editable() || !!busy() || !versions()?.length">Refine</button>
+    </form>
+  }
+} @else {
+  <div class="page-head"><div><h1>Plan</h1><p class="sub">Sub-topics, timing, hooks and the mandatory riddle.</p></div></div>
+  <div class="empty"><b>No project selected</b>Pick a topic in Advice or send a custom request.</div>
+}

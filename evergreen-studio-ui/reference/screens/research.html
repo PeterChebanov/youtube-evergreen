@@ -1,0 +1,77 @@
+<section class="screen" id="screen-research" data-screen="research">
+  <div class="page-head">
+    <div>
+      <h1>Research</h1>
+      <p class="sub">Add a reference channel. Code collects every long-form video, then AI analyzes each one cheaply.</p>
+    </div>
+    <div class="actions"><button class="btn" type="button">Refresh views</button></div>
+  </div>
+
+  <form class="urlbar" onsubmit="return false">
+    <input class="field" id="research-url" type="text" value="https://www.youtube.com/@channel-handle" aria-label="Channel URL">
+    <button class="btn btn-primary" type="button">Add channel</button>
+  </form>
+
+  <div class="grid grid-research">
+    <section class="panel panel-flush">
+      <div class="panel-head"><h2>Channels</h2><span class="meta">4 channels · 1 running · 1 paused</span></div>
+      <div class="table-scroll">
+        <table class="tbl">
+          <colgroup><col style="width:44%"><col style="width:17%"><col style="width:39%"></colgroup>
+          <thead><tr><th>Channel</th><th>State</th><th>Progress</th></tr></thead>
+          <tbody>
+            <tr class="is-selected">
+              <td><div class="cell-title">Топлес</div><div class="cell-sub">417 long-form · synced 2 days ago</div></td>
+              <td><span class="pill pill-ok">Ready</span></td>
+              <td><div class="progress-row"><div class="progress progress-ok"><i style="width:100%"></i></div><span class="num">100%</span></div></td>
+            </tr>
+            <tr>
+              <td><div class="cell-title">Утопия Шоу</div><div class="cell-sub">236 long-form · synced 5 days ago</div></td>
+              <td><span class="pill pill-ok">Ready</span></td>
+              <td><div class="progress-row"><div class="progress progress-ok"><i style="width:100%"></i></div><span class="num">100%</span></div></td>
+            </tr>
+            <tr>
+              <td><div class="cell-title">Варламов</div><div class="cell-sub">396 of 638 videos analyzed</div></td>
+              <td><span class="pill pill-acc">Analyzing</span></td>
+              <td><div class="progress-row"><div class="progress"><i style="width:62%"></i></div><span class="num">62%</span></div></td>
+            </tr>
+            <tr>
+              <td><div class="cell-title">Минаев Live</div><div class="cell-sub">YouTube quota reached. Resumes tomorrow 09:00</div></td>
+              <td><span class="pill pill-warn">Paused</span></td>
+              <td><div class="progress-row"><div class="progress progress-warn"><i style="width:35%"></i></div><span class="num">35%</span></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="stack">
+      <section class="panel">
+        <div class="panel-head"><h2>Jobs</h2><span class="meta">BullMQ</span></div>
+        <ul class="log">
+          <li><b>done</b><span>Fetch video list · 638 found</span></li>
+          <li><b class="is-run">run</b><span>AI analysis · 396 / 638</span></li>
+          <li><b class="is-queued">queued</b><span>Refresh views (ResearchSnapshot)</span></li>
+        </ul>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>Топлес · library</h2></div>
+        <div class="stats">
+          <div><span class="stat-n">417</span><span class="stat-l">Long-form videos</span></div>
+          <div><span class="stat-n">1.2M</span><span class="stat-l">Median views</span></div>
+          <div><span class="stat-n">52 min</span><span class="stat-l">Average length</span></div>
+          <div><span class="stat-n">8</span><span class="stat-l">Chapters per video</span></div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>AuthorStyle · Топлес</h2></div>
+        <ul class="kv">
+          <li><span>Opening</span><div>Concrete scene, contradiction named before 2:00</div></li>
+          <li><span>Rhythm</span><div>An open question returns every 8–10 minutes</div></li>
+          <li><span>Structure</span><div>7–9 chapters, 48–58 min, twist near 75%</div></li>
+          <li><span>Tone</span><div>Dry, second person, short sentences</div></li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</section>

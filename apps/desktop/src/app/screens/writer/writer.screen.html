@@ -1,0 +1,96 @@
+@if (!project()) {
+  <div class="page-head"><div><h1>Writer</h1><p class="sub">Chapter by chapter, with summaries of earlier chapters and the channel style.</p></div></div>
+  <div class="empty"><b>No project selected</b>Pick a topic in Advice or send a custom request.</div>
+} @else if (!ready()) {
+  <div class="page-head"><div><h1>Writer</h1><p class="sub">Chapter by chapter, with summaries of earlier chapters and the channel style.</p></div></div>
+  <div class="empty"><b>Facts are not handed to the writer yet</b>Approve the plan, then press Send to writer on the Fact research tab.</div>
+} @else {
+  <div class="page-head">
+    <div>
+      <h1>Writer · chapter {{ current()?.chapterOrder ?? '–' }} of {{ state()?.chapters?.length ?? '–' }}</h1>
+      <p class="sub">Chapter by chapter, with summaries of earlier chapters and the channel style.</p>
+    </div>
+    <div class="actions">
+      @if (!done()) {
+        <button class="btn" type="button" [disabled]="busy() || step()?.kind === 'none' || editing()" (click)="next()">{{ step()?.label ?? 'Next chapter' }}</button>
+      }
+      @if (state()?.canFinalize && !done()) {
+        <button class="btn btn-primary" type="button" [disabled]="busy()" (click)="finalize()">Send to My Videos</button>
+      } @else {
+        <button class="btn btn-primary" type="button" [disabled]="busy() || !state()" (click)="exportMarkdown()">Export Markdown</button>
+      }
+    </div>
+  </div>
+
+  @if (error()) { <div class="banner">{{ error() }}</div> }
+  @if (done()) { <div class="banner">This script is finished and saved to My Videos.</div> }
+
+  <div class="grid grid-writer">
+    <section class="panel">
+      <div class="panel-head"><h2>Chapters</h2></div>
+      @if (state(); as s) {
+        <div class="chlist">
+          @for (c of s.chapters; track c.chapterOrder) {
+            <a tabindex="0" [class.is-active]="c.chapterOrder === current()?.chapterOrder" [title]="c.title"
+              (click)="select(c.chapterOrder)" (keydown.enter)="select(c.chapterOrder)"><b>{{ c.chapterOrder }} · {{ c.title }}</b><span>{{ chapterLabel(c, writingOrder()) }}</span></a>
+          }
+        </div>
+      } @else {
+        <div class="stack"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+      }
+    </section>
+
+    <div class="stack">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Script · {{ language() }}</h2>
+          <span class="actions" style="align-items:baseline">
+            <span class="meta">tone from subtitles: {{ state()?.toneFromSubtitles ? 'on' : 'off' }}</span>
+            @if (current() && current()!.status !== 'todo' && !done() && !editing()) {
+              <button class="btn btn-sm" type="button" [disabled]="busy()" (click)="startEdit()">Edit</button>
+            }
+          </span>
+        </div>
+        @if (writingOrder() !== null && writingOrder() === current()?.chapterOrder) {
+          <div class="stack"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+        } @else if (editing()) {
+          <div class="field-group">
+            <textarea class="field field-script" aria-label="Chapter text" [value]="draftText()" (input)="draftText.set($any($event.target).value)"></textarea>
+            <div class="dialog-actions" style="margin-top:0">
+              <button class="btn" type="button" (click)="editing.set(false)">Cancel</button>
+              <button class="btn btn-primary" type="button" [disabled]="busy() || !draftText().trim()" (click)="saveEdit()">Save chapter</button>
+            </div>
+          </div>
+        } @else if (paragraphs().length) {
+          <div class="script">
+            @for (p of paragraphs(); track $index) { <p>{{ p }}</p> }
+          </div>
+        } @else {
+          <p class="mute">This chapter is not written yet. Press {{ step()?.label ?? 'Write chapter' }}.</p>
+        }
+      </section>
+      <form class="refine" (submit)="$event.preventDefault(); refine()">
+        <input class="field" id="writer-refine" type="text" placeholder="Refine this chapter: make the opening shorter…" aria-label="Refine chapter"
+          [value]="feedback()" (input)="feedback.set($any($event.target).value)" [disabled]="done()">
+        <button class="btn" type="submit" [disabled]="busy() || done() || current()?.status !== 'draft'">Refine</button>
+      </form>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Facts · chapter {{ current()?.chapterOrder }}</h2><span class="meta">{{ chapterFacts().length }} with URL</span></div>
+      @for (row of chapterFacts(); track row.fact.id) {
+        <div class="fact">
+          <span>{{ row.fact.text }}</span>
+          <a class="url" [href]="row.fact.sourceUrl" target="_blank" rel="noopener">{{ shortUrl(row.fact.sourceUrl) }}</a>
+          @if (row.relations.length) {
+            <span class="rel">Linked: {{ row.relations.join(', ') }}</span>
+          } @else if (row.fact.sourceTitle) {
+            <span class="rel">{{ row.fact.sourceTitle }}</span>
+          }
+        </div>
+      } @empty {
+        <p class="mute">No facts for this chapter.</p>
+      }
+    </section>
+  </div>
+}

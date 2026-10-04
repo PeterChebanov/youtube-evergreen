@@ -1,0 +1,50 @@
+/* Evergreen Studio design tokens. Direction "Console" with top navigation.
+   Light is the base. Dark follows the OS unless data-theme is set on <html>. */
+:root {
+  /* color */
+  --bg: #ECEDEF;        /* app background */
+  --panel: #F8F8F9;     /* panels, inputs on panels */
+  --side: #E1E2E6;      /* nav bar, status bar, table header strip */
+  --fg: #1A1B20;
+  --mute: #666A75;
+  --line: #CFD1D8;
+  --acc: #B26B00;       /* single accent: amber */
+  --acc-fg: #FFFFFF;    /* text on accent */
+  --soft: #F5E6CC;      /* accent tint: selected rows, chips */
+  --ok: #1B7F4B;
+  --warn: #A15C00;
+  --bad: #B3261E;
+
+  /* type */
+  --f-ui: 'Inter Tight', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --t-2xs: 10.5px;      /* uppercase labels, pills */
+  --t-xs: 11.5px;       /* secondary lines, meta */
+  --t-sm: 12px;         /* nav, status bar, mono data */
+  --t-base: 13px;       /* body, tables, inputs */
+  --t-script: 15px;     /* script reading text */
+  --t-title: 16px;      /* page title */
+  --t-num: 15px;        /* stat numbers (mono) */
+
+  /* shape and spacing */
+  --r: 2px;             /* radius everywhere, pills included */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px;
+  --nav-h: 38px;
+  --status-h: 26px;
+  --app-min-w: 1100px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1013; --panel: #15161B; --side: #0B0C0F; --fg: #DCDDE3; --mute: #7E8190;
+    --line: #26272F; --acc: #F0B232; --acc-fg: #14120A; --soft: #2B2412;
+    --ok: #4CC38A; --warn: #E8A33D; --bad: #F0786E;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1013; --panel: #15161B; --side: #0B0C0F; --fg: #DCDDE3; --mute: #7E8190;
+  --line: #26272F; --acc: #F0B232; --acc-fg: #14120A; --soft: #2B2412;
+  --ok: #4CC38A; --warn: #E8A33D; --bad: #F0786E;
+  color-scheme: dark;
+}

@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Evergreen Studio reference</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../components.css">
+<style>html,body{height:100%;margin:0;background:var(--bg)}</style>
+</head>
+<body>
+<div class="app" id="app">
+  <nav class="topnav" aria-label="Primary">
+    <a class="brand" href="#research">evergreen/studio</a>
+    <div class="tabs" role="tablist">
+      <a class="tab is-active" role="tab" tabindex="0" data-screen="research" data-key="g r">Research</a>
+      <a class="tab" role="tab" tabindex="0" data-screen="advice" data-key="g a">Advice</a>
+      <a class="tab" role="tab" tabindex="0" data-screen="plan" data-key="g p">Plan</a>
+      <a class="tab" role="tab" tabindex="0" data-screen="facts" data-key="g f">Facts</a>
+      <a class="tab" role="tab" tabindex="0" data-screen="writer" data-key="g w">Writer</a>
+      <a class="tab" role="tab" tabindex="0" data-screen="subtitles" data-key="g s">Subtitles</a>
+      <a class="tab" role="tab" tabindex="0" data-screen="database" data-key="g d">Database</a>
+      <a class="tab" role="tab" tabindex="0" data-screen="videos" data-key="g m">My Videos</a>
+    </div>
+    <div class="nav-right">
+      <button class="kbtn" type="button">Jump · ⌘K</button>
+      <button class="projsel" type="button">Project: Small towns ▾</button>
+    </div>
+  </nav>
+  <main class="main">
+<section class="screen" id="screen-research" data-screen="research">
+  <div class="page-head">
+    <div>
+      <h1>Research</h1>
+      <p class="sub">Add a reference channel. Code collects every long-form video, then AI analyzes each one cheaply.</p>
+    </div>
+    <div class="actions"><button class="btn" type="button">Refresh views</button></div>
+  </div>
+
+  <form class="urlbar" onsubmit="return false">
+    <input class="field" id="research-url" type="text" value="https://www.youtube.com/@channel-handle" aria-label="Channel URL">
+    <button class="btn btn-primary" type="button">Add channel</button>
+  </form>
+
+  <div class="grid grid-research">
+    <section class="panel panel-flush">
+      <div class="panel-head"><h2>Channels</h2><span class="meta">4 channels · 1 running · 1 paused</span></div>
+      <div class="table-scroll">
+        <table class="tbl">
+          <colgroup><col style="width:44%"><col style="width:17%"><col style="width:39%"></colgroup>
+          <thead><tr><th>Channel</th><th>State</th><th>Progress</th></tr></thead>
+          <tbody>
+            <tr class="is-selected">
+              <td><div class="cell-title">Топлес</div><div class="cell-sub">417 long-form · synced 2 days ago</div></td>
+              <td><span class="pill pill-ok">Ready</span></td>
+              <td><div class="progress-row"><div class="progress progress-ok"><i style="width:100%"></i></div><span class="num">100%</span></div></td>
+            </tr>
+            <tr>
+              <td><div class="cell-title">Утопия Шоу</div><div class="cell-sub">236 long-form · synced 5 days ago</div></td>
+              <td><span class="pill pill-ok">Ready</span></td>
+              <td><div class="progress-row"><div class="progress progress-ok"><i style="width:100%"></i></div><span class="num">100%</span></div></td>
+            </tr>
+            <tr>
+              <td><div class="cell-title">Варламов</div><div class="cell-sub">396 of 638 videos analyzed</div></td>
+              <td><span class="pill pill-acc">Analyzing</span></td>
+              <td><div class="progress-row"><div class="progress"><i style="width:62%"></i></div><span class="num">62%</span></div></td>
+            </tr>
+            <tr>
+              <td><div class="cell-title">Минаев Live</div><div class="cell-sub">YouTube quota reached. Resumes tomorrow 09:00</div></td>
+              <td><span class="pill pill-warn">Paused</span></td>
+              <td><div class="progress-row"><div class="progress progress-warn"><i style="width:35%"></i></div><span class="num">35%</span></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="stack">
+      <section class="panel">
+        <div class="panel-head"><h2>Jobs</h2><span class="meta">BullMQ</span></div>
+        <ul class="log">
+          <li><b>done</b><span>Fetch video list · 638 found</span></li>
+          <li><b class="is-run">run</b><span>AI analysis · 396 / 638</span></li>
+          <li><b class="is-queued">queued</b><span>Refresh views (ResearchSnapshot)</span></li>
+        </ul>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>Топлес · library</h2></div>
+        <div class="stats">
+          <div><span class="stat-n">417</span><span class="stat-l">Long-form videos</span></div>
+          <div><span class="stat-n">1.2M</span><span class="stat-l">Median views</span></div>
+          <div><span class="stat-n">52 min</span><span class="stat-l">Average length</span></div>
+          <div><span class="stat-n">8</span><span class="stat-l">Chapters per video</span></div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>AuthorStyle · Топлес</h2></div>
+        <ul class="kv">
+          <li><span>Opening</span><div>Concrete scene, contradiction named before 2:00</div></li>
+          <li><span>Rhythm</span><div>An open question returns every 8–10 minutes</div></li>
+          <li><span>Structure</span><div>7–9 chapters, 48–58 min, twist near 75%</div></li>
+          <li><span>Tone</span><div>Dry, second person, short sentences</div></li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="screen-advice" data-screen="advice">
+  <div class="page-head">
+    <div>
+      <h1>Advice</h1>
+      <p class="sub">Three topics from your library: one rework of a proven evergreen, two structural analogues.</p>
+    </div>
+    <div class="seg" role="tablist"><span class="is-on" role="tab">Advice</span><span role="tab">Custom request</span></div>
+  </div>
+
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <span class="select">Period: last 3 years ▾</span>
+      <span class="select">Genre: Urbanism, Economics ▾</span>
+      <label class="check"><i class="is-on">✓</i><span>Skip topics already in My Videos</span></label>
+    </div>
+    <button class="btn btn-primary" type="button">Get 3 topics</button>
+  </div>
+
+  <div class="grid grid-advice">
+    <section class="panel panel-flush">
+      <div class="panel-head"><h2>Suggested topics</h2><span class="meta">from library · no web search</span></div>
+      <div class="table-scroll">
+        <table class="tbl">
+          <colgroup><col style="width:34px"><col style="width:84px"><col style="width:30%"><col style="width:26%"><col style="width:22%"><col style="width:104px"></colgroup>
+          <thead><tr><th>#</th><th>Type</th><th>Topic</th><th>Source</th><th>Riddle</th><th></th></tr></thead>
+          <tbody>
+            <tr class="is-selected">
+              <td class="mute num">1</td><td><span class="pill pill-acc">Rework</span></td>
+              <td><div class="cell-title">Why small towns empty out faster than planned</div><div class="cell-sub">Rebuilds a top evergreen with a new angle and fresh data.</div></td>
+              <td><div>1.9M-view video</div><div class="cell-sub">Утопия Шоу · 54 min</div></td>
+              <td><span class="chip">Where did the people go?</span></td>
+              <td><button class="btn btn-primary btn-sm" type="button">Make plan</button></td>
+            </tr>
+            <tr>
+              <td class="mute num">2</td><td><span class="pill">Analogue</span></td>
+              <td><div class="cell-title">The hidden cost of cheap flights</div><div class="cell-sub">Everyday object, the system behind it, who pays.</div></td>
+              <td><div>Structure match 91%</div><div class="cell-sub">Топлес · 49 min</div></td>
+              <td><span class="chip">Who is the real customer?</span></td>
+              <td><button class="btn btn-sm" type="button">Make plan</button></td>
+            </tr>
+            <tr>
+              <td class="mute num">3</td><td><span class="pill">Analogue</span></td>
+              <td><div class="cell-title">Who actually owns your apartment building</div><div class="cell-sub">Personal story, hidden owner, counter-case, twist.</div></td>
+              <td><div>Structure match 87%</div><div class="cell-sub">Варламов · 57 min</div></td>
+              <td><span class="chip">Whose name is on the deed?</span></td>
+              <td><button class="btn btn-sm" type="button">Make plan</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Custom request</h2><span class="meta">database off by default</span></div>
+      <div class="field-group">
+        <textarea class="field" id="advice-request" aria-label="Request">A 50-minute video on why the cheapest option is rarely the cheapest, for a general audience.</textarea>
+        <input class="field" id="advice-ref" type="text" placeholder="Reference video URL (optional, not saved to library)" aria-label="Reference video URL">
+        <label class="check"><i></i><span>Use my database for this request</span></label>
+        <label class="check"><i class="is-on">✓</i><span>Research the whole channel of the reference video into the database</span></label>
+        <div class="row-between"><span class="mute">Single-video research is not saved.</span><button class="btn btn-primary" type="button">Send</button></div>
+      </div>
+    </section>
+  </div>
+</section>
+
+<section class="screen" id="screen-plan" data-screen="plan">
+  <div class="page-head">
+    <div>
+      <h1>Plan · Why small towns empty out faster than planned</h1>
+      <p class="sub">Target 52:00 · mandatory riddle planted at 1:20 and answered at 47:40.</p>
+    </div>
+    <div class="actions"><button class="btn btn-primary" type="button">Send to research</button></div>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Timeline</h2><span class="meta">6 chapters · 52:00</span></div>
+    <div class="timeline" role="img" aria-label="Chapter timeline, 52 minutes">
+      <div style="flex:3.5">Cold open</div>
+      <div style="flex:7.5">The promise</div>
+      <div style="flex:11.5">Where the money went</div>
+      <div style="flex:10.5">The counter-case</div>
+      <div style="flex:10">What planners missed</div>
+      <div style="flex:9">The answer</div>
+      <span class="tl-mark from-left" style="left:2.5%">riddle planted 1:20</span>
+      <span class="tl-mark from-right" style="right:8.3%">riddle answered 47:40</span>
+    </div>
+  </section>
+
+  <section class="panel panel-flush">
+    <div class="panel-head"><h2>Chapters</h2><span class="meta">subtopics · timing · hooks</span></div>
+    <div class="table-scroll">
+      <table class="tbl">
+        <colgroup><col style="width:70px"><col style="width:70px"><col style="width:36%"><col></colgroup>
+        <thead><tr><th>Start</th><th>Length</th><th>Chapter</th><th>Hooks</th></tr></thead>
+        <tbody>
+          <tr><td class="num">0:00</td><td class="num">3:30</td><td><div class="cell-title">Cold open</div></td><td><div class="chips"><span class="chip">Scene</span><span class="chip chip-riddle">Riddle planted</span></div></td></tr>
+          <tr><td class="num">3:30</td><td class="num">7:30</td><td><div class="cell-title">The promise of the quiet town</div></td><td><div class="chips"><span class="chip">Contrast</span><span class="chip">Data reveal</span></div></td></tr>
+          <tr><td class="num">11:00</td><td class="num">11:30</td><td><div class="cell-title">Where the money went</div></td><td><div class="chips"><span class="chip">Open loop</span><span class="chip">Mini-twist</span></div></td></tr>
+          <tr><td class="num">22:30</td><td class="num">10:30</td><td><div class="cell-title">The town that bucked the trend</div></td><td><div class="chips"><span class="chip">Counter-case</span></div></td></tr>
+          <tr><td class="num">33:00</td><td class="num">10:00</td><td><div class="cell-title">What the planners missed</div></td><td><div class="chips"><span class="chip">Twist</span></div></td></tr>
+          <tr><td class="num">43:00</td><td class="num">9:00</td><td><div class="cell-title">Answer to the riddle, and what is next</div></td><td><div class="chips"><span class="chip chip-riddle">Riddle answered</span><span class="chip">Callback</span></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <form class="refine" onsubmit="return false">
+    <input class="field" id="plan-refine" type="text" placeholder="Refine the plan: shorten chapter 3, add a counter-example…" aria-label="Refine the plan">
+    <button class="btn" type="button">Refine</button>
+  </form>
+</section>
+
+<section class="screen" id="screen-facts" data-screen="facts">
+  <div class="page-head">
+    <div>
+      <h1>Fact research</h1>
+      <p class="sub">Web research for every sub-chapter of the approved plan. Every fact carries a URL.</p>
+    </div>
+    <div class="actions"><button class="btn" type="button">Refine</button><button class="btn btn-primary" type="button">Send to writer</button></div>
+  </div>
+
+  <div class="grid grid-facts">
+    <section class="panel">
+      <div class="panel-head"><h2>Chapters</h2><span class="meta">4 / 6 done</span></div>
+      <div class="chlist">
+        <a><b>1 · Cold open</b><span>done</span></a>
+        <a><b>2 · The promise</b><span>done</span></a>
+        <a class="is-active"><b>3 · Where the money went</b><span>done</span></a>
+        <a><b>4 · The counter-case</b><span>done</span></a>
+        <a><b>5 · What planners missed</b><span>run</span></a>
+        <a><b>6 · The answer</b><span>queued</span></a>
+      </div>
+    </section>
+
+    <section class="panel panel-flush">
+      <div class="panel-head"><h2>Facts · chapter 3</h2><span class="meta">Tavily · Brave · Reddit</span></div>
+      <div class="table-scroll">
+        <table class="tbl">
+          <colgroup><col style="width:34px"><col style="width:42%"><col style="width:28%"><col></colgroup>
+          <thead><tr><th>#</th><th>Fact</th><th>Source</th><th>Connections</th></tr></thead>
+          <tbody>
+            <tr class="is-selected"><td class="num mute">1</td><td>Local budget depends on headcount, not on who lives there.</td><td><span class="mono">example.org/budget-rules</span></td><td><div class="chips"><span class="chip">supports 2</span></div></td></tr>
+            <tr><td class="num mute">2</td><td>Registered population grew while real residents left.</td><td><span class="mono">example.org/census-report-2024</span></td><td><div class="chips"><span class="chip">explains 1</span><span class="chip">contrasts 4</span></div></td></tr>
+            <tr><td class="num mute">3</td><td>Three similar towns report the same gap between registered and real residents.</td><td><span class="mono">example.org/regional-study</span></td><td><div class="chips"><span class="chip">same pattern as 2</span></div></td></tr>
+            <tr><td class="num mute">4</td><td>A resident thread describes closing shops and unchanged official figures.</td><td><span class="mono">reddit.com/r/example/thread</span></td><td><div class="chips"><span class="chip">anecdote for 2</span></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</section>
+
+<section class="screen" id="screen-writer" data-screen="writer">
+  <div class="page-head">
+    <div>
+      <h1>Writer · chapter 3 of 6</h1>
+      <p class="sub">Chapter by chapter, with summaries of earlier chapters and the channel style.</p>
+    </div>
+    <div class="actions"><button class="btn" type="button">Next chapter</button><button class="btn btn-primary" type="button">Export Markdown</button></div>
+  </div>
+
+  <div class="grid grid-writer">
+    <section class="panel">
+      <div class="panel-head"><h2>Chapters</h2></div>
+      <div class="chlist">
+        <a><b>1 · Cold open</b><span>done</span></a>
+        <a><b>2 · The promise</b><span>done</span></a>
+        <a class="is-active"><b>3 · Where the money went</b><span>writing</span></a>
+        <a><b>4 · The counter-case</b><span>todo</span></a>
+        <a><b>5 · What planners missed</b><span>todo</span></a>
+        <a><b>6 · The answer</b><span>todo</span></a>
+      </div>
+    </section>
+
+    <div class="stack">
+      <section class="panel">
+        <div class="panel-head"><h2>Script · RU</h2><span class="meta">tone from subtitles: on</span></div>
+        <div class="script">
+          <p>В три часа дня на главной улице нет ни одной машины. Не потому что сегодня выходной, а потому что здесь уже пятый год почти никто не живёт. Магазин на углу закрылся в марте, школа — два года назад.</p>
+          <p>И вот что странно: по официальной статистике, город всё ещё <mark>считается растущим</mark>. Чтобы понять, как это возможно, придётся пройти по деньгам, а они ушли совсем не туда, куда мы привыкли смотреть.</p>
+        </div>
+      </section>
+      <form class="refine" onsubmit="return false">
+        <input class="field" id="writer-refine" type="text" placeholder="Refine this chapter: make the opening shorter…" aria-label="Refine chapter">
+        <button class="btn" type="button">Refine</button>
+      </form>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Facts · chapter 3</h2><span class="meta">3 with URL</span></div>
+      <div class="fact"><span>Registered population grew while real residents left.</span><span class="url">example.org/census-report-2024</span><span class="rel">Linked to fact 2</span></div>
+      <div class="fact"><span>Local budget depends on headcount, not on who lives there.</span><span class="url">example.org/budget-rules</span><span class="rel">Linked to fact 1</span></div>
+      <div class="fact"><span>Three similar towns report the same gap.</span><span class="url">example.org/regional-study</span><span class="rel">Thread found on Reddit</span></div>
+    </section>
+  </div>
+</section>
+
+<section class="screen" id="screen-subtitles" data-screen="subtitles">
+  <div class="page-head">
+    <div>
+      <h1>Subtitles</h1>
+      <p class="sub">One video at a time. The tone analysis is used by Writer when you switch it on.</p>
+    </div>
+  </div>
+
+  <form class="urlbar" onsubmit="return false">
+    <input class="field" id="subs-url" type="text" value="https://www.youtube.com/watch?v=VIDEO_ID" aria-label="Video URL">
+    <button class="btn btn-primary" type="button">Check video</button>
+  </form>
+
+  <div class="grid grid-subs">
+    <section class="panel">
+      <div class="panel-head"><h2>Check result</h2><span class="meta">yt-dlp · RU subtitles found</span></div>
+      <ul class="kv">
+        <li><span>Title</span><div>Почему закрываются заводы</div></li>
+        <li><span>Channel</span><div>Reference channel 1 · partial in database (212 of 417)</div></li>
+        <li><span>In database</span><div><span class="pill pill-warn">Not found</span></div></li>
+        <li><span>Length</span><div class="num">54:12</div></li>
+      </ul>
+      <div class="banner" style="margin-top:12px">This video is not in the database yet. Add this video, or research the whole channel first.</div>
+      <div class="actions" style="margin-top:12px"><button class="btn btn-primary" type="button">Add video and analyze</button><button class="btn" type="button">Research whole channel</button></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Transcript analysis</h2><span class="meta">preview</span></div>
+      <ul class="kv">
+        <li><span>Pace</span><div class="num">148 words/min, pauses before reveals</div></li>
+        <li><span>Address</span><div>Second person, rare direct questions</div></li>
+        <li><span>Humor</span><div>Dry asides, one every ~4 minutes</div></li>
+        <li><span>Phrases</span><div><div class="chips"><span class="chip">And here is the catch</span><span class="chip">Let us count</span><span class="chip">That is the plan</span></div></div></li>
+      </ul>
+      <div class="actions" style="margin-top:12px"><button class="btn" type="button">Use in Writer</button></div>
+    </section>
+  </div>
+</section>
+
+<section class="screen" id="screen-database" data-screen="database">
+  <div class="page-head">
+    <div>
+      <h1>Database</h1>
+      <p class="sub">Read-only view, shown the way it is stored.</p>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <span class="select">Table: Video ▾</span>
+      <input class="field" id="db-filter" type="text" placeholder="Filter rows" aria-label="Filter rows" style="width:220px">
+    </div>
+    <div class="toolbar-group">
+      <span class="mute mono">14,382 rows · read-only</span>
+      <button class="btn" type="button">Copy cell</button>
+      <button class="btn btn-primary" type="button">Copy table</button>
+    </div>
+  </div>
+
+  <section class="panel panel-flush">
+    <div class="table-scroll">
+      <table class="tbl tbl-min">
+        <colgroup><col style="width:88px"><col style="width:156px"><col><col style="width:108px"><col style="width:72px"><col style="width:100px"><col style="width:96px"><col style="width:100px"><col style="width:100px"></colgroup>
+        <thead><tr><th>video_id</th><th>channel</th><th>title</th><th>published</th><th>length</th><th class="r">views</th><th class="r">chapters</th><th>genre</th><th>status</th></tr></thead>
+        <tbody>
+          <tr><td class="mono nowrap">v_0001</td><td class="ell" title="Reference channel 1">Reference channel 1</td><td class="ell" title="Почему закрываются заводы">Почему закрываются заводы</td><td class="mono nowrap">2023-04-11</td><td class="mono nowrap">54:12</td><td class="r mono nowrap">1,912,400</td><td class="r mono nowrap">8</td><td>Economics</td><td><span class="pill pill-ok">analyzed</span></td></tr>
+          <tr><td class="mono nowrap">v_0002</td><td class="ell" title="Reference channel 2">Reference channel 2</td><td class="ell" title="Город, который не ждал">Город, который не ждал</td><td class="mono nowrap">2022-11-02</td><td class="mono nowrap">49:40</td><td class="r mono nowrap">1,204,900</td><td class="r mono nowrap">7</td><td>Urbanism</td><td><span class="pill pill-ok">analyzed</span></td></tr>
+          <tr class="is-selected"><td class="mono nowrap">v_0003</td><td class="ell" title="Reference channel 1">Reference channel 1</td><td class="ell" title="Кому принадлежит набережная">Кому принадлежит набережная</td><td class="mono nowrap">2024-01-19</td><td class="mono nowrap">57:03</td><td class="r mono nowrap">988,100</td><td class="r mono nowrap">9</td><td>Urbanism</td><td><span class="pill pill-ok">analyzed</span></td></tr>
+          <tr><td class="mono nowrap">v_0004</td><td class="ell" title="Reference channel 3">Reference channel 3</td><td class="ell" title="Цена дешёвого билета">Цена дешёвого билета</td><td class="mono nowrap">2021-08-27</td><td class="mono nowrap">46:55</td><td class="r mono nowrap">2,430,000</td><td class="r mono nowrap">6</td><td>Economics</td><td><span class="pill pill-ok">analyzed</span></td></tr>
+          <tr><td class="mono nowrap">v_0005</td><td class="ell" title="Reference channel 3">Reference channel 3</td><td class="ell" title="Последний рабочий посёлок">Последний рабочий посёлок</td><td class="mono nowrap">2024-06-05</td><td class="mono nowrap">52:18</td><td class="r mono nowrap">641,700</td><td class="r mono nowrap">8</td><td>Society</td><td><span class="pill pill-warn">pending</span></td></tr>
+          <tr><td class="mono nowrap">v_0006</td><td class="ell" title="Reference channel 4">Reference channel 4</td><td class="ell" title="Как устроен городской бюджет">Как устроен городской бюджет</td><td class="mono nowrap">2023-09-14</td><td class="mono nowrap">61:21</td><td class="r mono nowrap">402,300</td><td class="r mono nowrap">10</td><td>Politics</td><td><span class="pill pill-ok">analyzed</span></td></tr>
+          <tr><td class="mono nowrap">v_0007</td><td class="ell" title="Reference channel 2">Reference channel 2</td><td class="ell" title="Дома, которые никто не строил">Дома, которые никто не строил</td><td class="mono nowrap">2022-03-30</td><td class="mono nowrap">44:07</td><td class="r mono nowrap">1,577,000</td><td class="r mono nowrap">7</td><td>Urbanism</td><td><span class="pill pill-ok">analyzed</span></td></tr>
+          <tr><td class="mono nowrap">v_0008</td><td class="ell" title="Reference channel 1">Reference channel 1</td><td class="ell" title="Откуда берутся пробки">Откуда берутся пробки</td><td class="mono nowrap">2020-12-08</td><td class="mono nowrap">51:44</td><td class="r mono nowrap">3,105,800</td><td class="r mono nowrap">8</td><td>Urbanism</td><td><span class="pill pill-ok">analyzed</span></td></tr>
+          <tr><td class="mono nowrap">v_0009</td><td class="ell" title="Reference channel 4">Reference channel 4</td><td class="ell" title="Что случилось с районом за год">Что случилось с районом за год</td><td class="mono nowrap">2025-02-21</td><td class="mono nowrap">48:30</td><td class="r mono nowrap">215,400</td><td class="r mono nowrap">6</td><td>Society</td><td><span class="pill pill-warn">pending</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="row-between mute"><span>Rows 1–9 are loaded. The list is virtualized and scrolls through thousands of rows.</span><span class="mono">selected: v_0003.title</span></div>
+</section>
+
+<section class="screen" id="screen-videos" data-screen="videos">
+  <div class="page-head">
+    <div>
+      <h1>My Videos</h1>
+      <p class="sub">Finished scripts. Advice skips these topics, including close matches found by similarity.</p>
+    </div>
+    <div class="actions"><button class="btn" type="button">Export Markdown</button></div>
+  </div>
+
+  <div class="grid grid-videos">
+    <section class="panel panel-flush">
+      <div class="panel-head"><h2>Scripts</h2><span class="meta">3 finished · 1 draft</span></div>
+      <div class="table-scroll">
+        <table class="tbl">
+          <colgroup><col style="width:44%"><col style="width:17%"><col style="width:12%"><col style="width:27%"></colgroup>
+          <thead><tr><th>Title</th><th>Project</th><th>Length</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr class="is-selected"><td><div class="cell-title">Why small towns empty out faster than planned</div><div class="cell-sub">Finished 2026-09-28 · RU</div></td><td>Small towns</td><td class="num">52:10</td><td><div class="chips"><span class="pill pill-ok">finished</span><span class="pill pill-ok">indexed</span></div></td></tr>
+            <tr><td><div class="cell-title">The hidden cost of cheap flights</div><div class="cell-sub">Finished 2026-08-14 · EN</div></td><td>Money</td><td class="num">49:35</td><td><div class="chips"><span class="pill pill-ok">finished</span><span class="pill pill-ok">indexed</span></div></td></tr>
+            <tr><td><div class="cell-title">Who actually owns your apartment building</div><div class="cell-sub">Finished 2026-07-02 · RU</div></td><td>Housing</td><td class="num">56:48</td><td><div class="chips"><span class="pill pill-ok">finished</span><span class="pill pill-warn">indexing</span></div></td></tr>
+            <tr><td><div class="cell-title">The quiet cost of free delivery</div><div class="cell-sub">Draft · chapter 2 of 6 · EN</div></td><td>Money</td><td class="num">—</td><td><span class="pill">draft</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Topic memory</h2><span class="meta">pgvector</span></div>
+      <ul class="kv">
+        <li><span>Indexed</span><div class="num">3 scripts</div></li>
+        <li><span>Used by</span><div>Advice, to avoid repeated topics</div></li>
+        <li><span>Closest pair</span><div>“Cheap flights” and “Free delivery” · similarity 0.62</div></li>
+      </ul>
+    </section>
+  </div>
+</section>
+
+  </main>
+  <footer class="statusbar">
+    <span><span class="dot">●</span> API connected</span>
+    <span>BullMQ: 1 running · 1 queued</span>
+    <span>YouTube quota 6,420 / 10,000</span>
+    <span>LLM spend today $0.84</span>
+    <span>Postgres: 14,382 videos</span>
+  </footer>
+</div>
+<script>(function(){
+  var tabs=[].slice.call(document.querySelectorAll(".tab"));
+  var screens=[].slice.call(document.querySelectorAll(".screen"));
+  function show(id){
+    if(!document.getElementById("screen-"+id))id="research";
+    screens.forEach(function(s){s.hidden=s.getAttribute("data-screen")!==id;});
+    tabs.forEach(function(t){var on=t.getAttribute("data-screen")===id;t.classList.toggle("is-active",on);t.setAttribute("aria-selected",on);});
+    try{history.replaceState(null,"","#"+id);}catch(e){}
+  }
+  tabs.forEach(function(t){
+    t.addEventListener("click",function(){show(t.getAttribute("data-screen"));});
+    t.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();show(t.getAttribute("data-screen"));}});
+  });
+  show((location.hash||"#research").slice(1));
+})();</script>
+</body>
+</html>
