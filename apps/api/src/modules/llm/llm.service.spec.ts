@@ -19,7 +19,10 @@ function setup(replies: Array<Partial<LlmChatResponse>>) {
     embed: async (_model, texts) => ({ vectors: texts.map(() => [1]), inputTokens: texts.length }),
   };
   const logged: Array<Record<string, unknown>> = [];
-  const prisma = { llmCall: { create: async ({ data }: { data: Record<string, unknown> }) => logged.push(data) } };
+  const prisma = {
+    llmCall: { create: async ({ data }: { data: Record<string, unknown> }) => logged.push(data) },
+    project: { findUnique: async () => null },
+  };
   const config = new ConfigService(appConfig()) as unknown as ConfigService<AppConfig, true>;
   const service = new LlmService(provider, prisma as unknown as PrismaService, config);
   return { service, requests, logged };

@@ -21,6 +21,9 @@ export const project = {
   toneReferenceVideoIds: ['v3'],
   useDatabase: false,
   topic: 'Small towns',
+  searchProviders: ['tavily', 'brave'],
+  llmResearchModel: null,
+  llmWriterModel: null,
 };
 
 const job = (status, stage, progress, extra = {}) => ({ id: `j-${status}`, status, stage, progress, error: null, pausedUntil: null, ...extra });

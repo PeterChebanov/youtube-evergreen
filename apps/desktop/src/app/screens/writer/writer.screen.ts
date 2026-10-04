@@ -5,6 +5,7 @@ import { fileSlug, saveText } from '../../core/download';
 import { paragraphs, shortUrl } from '../../core/format';
 import { Nav, ProjectStore } from '../../core/stores';
 import { chapterFacts } from '../facts/facts.view';
+import { ProjectAiSettings } from '../../ui/project-ai-settings';
 import { chapterLabel, focusChapter, nextStep } from './writer.view';
 
 const WRITER_STATUSES = ['research_approved', 'writing', 'done'];
@@ -12,6 +13,7 @@ const WRITER_STATUSES = ['research_approved', 'writing', 'done'];
 @Component({
   selector: 'section[esWriter]',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ProjectAiSettings],
   host: { class: 'screen', id: 'screen-writer', 'data-screen': 'writer' },
   templateUrl: './writer.screen.html',
 })

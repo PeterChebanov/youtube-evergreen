@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  SEARCH_PROVIDER_IDS,
   adviceFiltersSchema,
   adviceRunResultSchema,
   canTransition,
@@ -9,6 +10,7 @@ import {
   type PlanContent,
   type ProjectDto,
   type ProjectStatus,
+  type SearchProviderId,
   type UpdateProjectRequest,
 } from '@youtube-ai-tool/shared';
 import type { Project } from '@prisma/client';
@@ -33,7 +35,15 @@ export function toProjectDto(p: Project): ProjectDto {
     toneReferenceVideoIds: p.toneReferenceVideoIds,
     useDatabase: p.useDatabase,
     topic: p.topic,
+    searchProviders: parseSearchProviders(p.searchProviders),
+    llmResearchModel: p.llmResearchModel,
+    llmWriterModel: p.llmWriterModel,
   };
+}
+
+function parseSearchProviders(values: string[]): SearchProviderId[] {
+  const allowed = new Set<string>(SEARCH_PROVIDER_IDS);
+  return values.filter((v): v is SearchProviderId => allowed.has(v));
 }
 
 @Injectable()
@@ -122,6 +132,10 @@ export class ProjectsService {
       if (!styles) throw invalid('The overlay channel has no researched techniques');
     }
     if (patch.genreId) orNotFound(await this.prisma.genre.findUnique({ where: { id: patch.genreId } }), 'Genre');
+    if (patch.searchProviders) {
+      const bad = patch.searchProviders.filter((id) => !SEARCH_PROVIDER_IDS.includes(id));
+      if (bad.length) throw invalid(`Unknown search provider: ${bad.join(', ')}`);
+    }
     if (project.status === 'done') throw conflict('A finished project can no longer be changed');
     return toProjectDto(await this.prisma.project.update({ where: { id }, data: patch }));
   }

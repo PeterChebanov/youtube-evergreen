@@ -104,7 +104,7 @@ export class PlanningService {
       user: { mode: 'shallow', topic: project.topic ?? project.title, language: project.language, chapter: null },
       schema: researchQueriesSchema,
     });
-    const docs = await this.search.documents(data.queries.slice(0, 3));
+    const docs = await this.search.documents(data.queries.slice(0, 3), project.searchProviders);
     return docs.slice(0, SHALLOW_NOTES).map((d) => ({ url: d.url, title: d.title, text: d.text.slice(0, NOTE_CHARS) }));
   }
 

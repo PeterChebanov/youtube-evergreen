@@ -25,6 +25,8 @@
     <div class="banner">Facts are handed to the writer and can no longer change.</div>
   }
 
+  <es-project-ai-settings [project]="project()" mode="both" />
+
   @if (refineOpen()) {
     <form class="refine" (submit)="$event.preventDefault(); refine()">
       <input class="field" type="text" aria-label="Refine the facts" placeholder="Refine: find primary sources, add a counter-example…"

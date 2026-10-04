@@ -3,8 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { errorMessage } from '../../common/domain-error';
 import type { AppConfig } from '../../config/app.config';
 import { normalizeUrl } from '../fact-research/fact-policy';
+import { activeSearchProviders, buildSearchProviders, searchOptions } from './build-providers';
 import { htmlToText } from './html-text';
-import { BraveSearchProvider, MockSearchProvider, RedditSearchProvider, TavilySearchProvider } from './providers';
+import { MockSearchProvider } from './providers';
 import type { SearchHit, SearchProvider } from './search.types';
 
 const PAGE_TEXT_LIMIT = 8000;
@@ -19,22 +20,29 @@ export class SearchService {
 
   constructor(config: ConfigService<AppConfig, true>) {
     this.cfg = config.get('search', { infer: true });
-    const providers: SearchProvider[] = [];
-    if (this.cfg.tavilyApiKey) providers.push(new TavilySearchProvider(this.cfg.tavilyApiKey));
-    if (this.cfg.braveApiKey) providers.push(new BraveSearchProvider(this.cfg.braveApiKey));
-    if (this.cfg.redditClientId && this.cfg.redditClientSecret) {
-      providers.push(new RedditSearchProvider(this.cfg.redditClientId, this.cfg.redditClientSecret));
-    }
-    this.providers = providers.length ? providers : [new MockSearchProvider()];
+    this.providers = buildSearchProviders(this.cfg);
   }
 
   get providerNames(): string[] {
-    return this.providers.map((p) => p.name);
+    return this.active().map((p) => p.name);
   }
 
-  /** Queries every configured provider; one failing provider does not fail the search. */
-  async search(queries: string[]): Promise<SearchHit[]> {
-    const tasks = queries.flatMap((q) => this.providers.map((p) => p.search(q, this.cfg.resultsPerQuery)));
+  options() {
+    return searchOptions(this.cfg);
+  }
+
+  private active(selected: readonly string[] = []): SearchProvider[] {
+    const active = activeSearchProviders(this.providers, selected);
+    if (!active.length) {
+      throw new Error('No search providers are selected. Pick at least one source with a configured API key.');
+    }
+    return active;
+  }
+
+  /** Queries every selected provider; one failing provider does not fail the search. */
+  async search(queries: string[], selectedProviders: readonly string[] = []): Promise<SearchHit[]> {
+    const providers = this.active(selectedProviders);
+    const tasks = queries.flatMap((q) => providers.map((p) => p.search(q, this.cfg.resultsPerQuery)));
     const settled = await Promise.allSettled(tasks);
     const hits = new Map<string, SearchHit>();
     for (const s of settled) {
@@ -54,8 +62,8 @@ export class SearchService {
   }
 
   /** Search hits turned into source documents with page text where it can be fetched. */
-  async documents(queries: string[]): Promise<SourceDocument[]> {
-    const hits = (await this.search(queries)).slice(0, this.cfg.maxPagesPerChapter);
+  async documents(queries: string[], selectedProviders: readonly string[] = []): Promise<SourceDocument[]> {
+    const hits = (await this.search(queries, selectedProviders)).slice(0, this.cfg.maxPagesPerChapter);
     return Promise.all(
       hits.map(async (h) => {
         const page = h.offline ? null : await this.fetchPage(h.url);

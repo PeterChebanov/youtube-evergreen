@@ -5,6 +5,7 @@ import { JOB_POLL_MS } from '../../core/config';
 import { shortUrl } from '../../core/format';
 import { Nav, ProjectStore, poll } from '../../core/stores';
 import { Check } from '../../ui/check';
+import { ProjectAiSettings } from '../../ui/project-ai-settings';
 import { chapterFacts, isHttpUrl, sourcesMeta } from './facts.view';
 
 const ACTIVE = ['queued', 'running'];
@@ -12,7 +13,7 @@ const ACTIVE = ['queued', 'running'];
 @Component({
   selector: 'section[esFacts]',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Check],
+  imports: [Check, ProjectAiSettings],
   host: { class: 'screen', id: 'screen-facts', 'data-screen': 'facts' },
   templateUrl: './facts.screen.html',
 })

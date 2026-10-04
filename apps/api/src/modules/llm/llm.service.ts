@@ -12,7 +12,11 @@ import {
   StructuredRequest,
   StructuredResult,
 } from './llm.types';
+import { RESEARCH_LLM_PROMPTS, WRITER_LLM_PROMPTS } from '@youtube-ai-tool/shared';
 import type { PromptName } from './prompt-names';
+
+const RESEARCH = new Set<string>(RESEARCH_LLM_PROMPTS);
+const WRITER = new Set<string>(WRITER_LLM_PROMPTS);
 
 const MAX_TOOL_ROUNDS = 5;
 const MAX_REPAIRS = 2;
@@ -45,7 +49,7 @@ export class LlmService {
    * validation error. Every attempt is logged as a single LlmCall row.
    */
   async completeStructured<S extends z.ZodTypeAny>(req: StructuredRequest<S>): Promise<StructuredResult<z.output<S>>> {
-    const model = this.llm.models[req.promptName];
+    const model = await this.resolveModel(req.promptName, req.projectId);
     const user = typeof req.user === 'string' ? req.user : JSON.stringify(req.user, null, 1);
     const messages: LlmMessage[] = [
       { role: 'system', content: `${req.system}\n\nReply with a single JSON object only.` },
@@ -130,6 +134,27 @@ export class LlmService {
   costUsd(inputTokens: number, outputTokens: number): number {
     const usd = (inputTokens / 1e6) * this.llm.priceInputPer1M + (outputTokens / 1e6) * this.llm.priceOutputPer1M;
     return Math.round(usd * 10000) / 10000;
+  }
+
+  researchDefaultModel(): string {
+    return this.llm.models.research_queries;
+  }
+
+  writerDefaultModel(): string {
+    return this.llm.models.writer;
+  }
+
+  private async resolveModel(promptName: PromptName, projectId?: string | null): Promise<string> {
+    const fallback = this.llm.models[promptName];
+    if (!projectId) return fallback;
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { llmResearchModel: true, llmWriterModel: true },
+    });
+    if (!project) return fallback;
+    if (project.llmResearchModel && RESEARCH.has(promptName)) return project.llmResearchModel;
+    if (project.llmWriterModel && WRITER.has(promptName)) return project.llmWriterModel;
+    return fallback;
   }
 
   private async log(

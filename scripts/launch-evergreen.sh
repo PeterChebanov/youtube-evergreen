@@ -54,6 +54,12 @@ for _ in $(seq 1 40); do
 done
 
 pnpm build:shared >/dev/null
+pnpm --filter @youtube-ai-tool/api prisma:generate >/dev/null
+echo "applying database migrations…"
+if ! pnpm --filter @youtube-ai-tool/api prisma:deploy; then
+  alert "Database migrations failed. Check Docker Postgres and DATABASE_URL in .env (see README)."
+  exit 1
+fi
 
 if [[ ! -f apps/api/dist/main.js ]]; then
   echo "building API…"

@@ -2,6 +2,7 @@ export * from './advice/period';
 export * from './format';
 export * from './projects/project-status';
 export * from './research/cost-estimate';
+export * from './search/providers';
 export * from './schemas/advice.schema';
 export * from './schemas/api.schema';
 export * from './schemas/plan.schema';

@@ -2,12 +2,14 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { Api, errorText } from '../../core/api.service';
 import { minutesClock } from '../../core/format';
 import { Nav, ProjectStore } from '../../core/stores';
+import { ProjectAiSettings } from '../../ui/project-ai-settings';
 import { PlanStore } from './plan.store';
 import { chapterChips, planSubtitle, riddleMarkers } from './plan.view';
 
 @Component({
   selector: 'section[esPlan]',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ProjectAiSettings],
   host: { class: 'screen', id: 'screen-plan', 'data-screen': 'plan' },
   templateUrl: './plan.screen.html',
 })

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SEARCH_PROVIDER_IDS } from '../search/providers';
 import { planDraftSchema } from './plan.schema';
 
 const text = z.string().trim().min(1);
@@ -37,6 +38,9 @@ export const updateProjectRequestSchema = z
     authorOverlayChannelId: z.string().nullable(),
     toneReferenceVideoIds: z.array(z.string()).max(3),
     useDatabase: z.boolean(),
+    searchProviders: z.array(z.enum(SEARCH_PROVIDER_IDS)),
+    llmResearchModel: z.string().trim().min(1).nullable(),
+    llmWriterModel: z.string().trim().min(1).nullable(),
   })
   .partial();
 export type UpdateProjectRequest = z.infer<typeof updateProjectRequestSchema>;

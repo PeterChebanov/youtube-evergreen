@@ -18,6 +18,9 @@ export type {
   TopicMemory,
   UpdateProjectRequest,
   WriterState,
+  SearchOption,
+  LlmDefaults,
+  SearchProviderId,
 } from '@youtube-ai-tool/shared';
 
 export type ResearchPreview = {

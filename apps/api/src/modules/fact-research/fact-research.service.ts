@@ -178,7 +178,7 @@ export class FactResearchService {
       schema: researchQueriesSchema,
       tools: useDatabase ? this.dbTools.toolSet() : undefined,
     });
-    const sources = await this.search.documents(q.queries);
+    const sources = await this.search.documents(q.queries, project.searchProviders);
     if (!sources.length) throw new Error('search returned no sources');
 
     const { data } = await this.llm.completeStructured({

@@ -43,6 +43,27 @@ export class BraveSearchProvider implements SearchProvider {
   }
 }
 
+export class PerplexitySearchProvider implements SearchProvider {
+  readonly name = 'perplexity';
+  constructor(private readonly apiKey: string) {}
+
+  async search(query: string, limit: number): Promise<SearchHit[]> {
+    const res = await fetch('https://api.perplexity.ai/search', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${this.apiKey}` },
+      body: JSON.stringify({ query, max_results: Math.min(20, Math.max(1, limit)) }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    const body = await json<{ results?: Array<{ title: string; url: string; snippet?: string }> }>(res, this.name);
+    return (body.results ?? []).map((r) => ({
+      title: r.title,
+      url: r.url,
+      snippet: r.snippet ?? '',
+      provider: this.name,
+    }));
+  }
+}
+
 /** Reddit threads give first-hand accounts and anecdotes (REQUIREMENTS 4.3). */
 export class RedditSearchProvider implements SearchProvider {
   readonly name = 'reddit';

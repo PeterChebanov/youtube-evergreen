@@ -63,6 +63,7 @@ export const appConfig = () => ({
   search: {
     tavilyApiKey: str('TAVILY_API_KEY'),
     braveApiKey: str('BRAVE_API_KEY'),
+    perplexityApiKey: str('PERPLEXITY_API_KEY'),
     redditClientId: str('REDDIT_CLIENT_ID'),
     redditClientSecret: str('REDDIT_CLIENT_SECRET'),
     resultsPerQuery: int('SEARCH_RESULTS_PER_QUERY', 5),

@@ -63,6 +63,8 @@ export class Api {
   }
 
   opsStatus = () => this.get<OpsStatus>('/ops/status');
+  searchOptions = () => this.get<import('./api.types').SearchOption[]>('/ops/search-options');
+  llmDefaults = () => this.get<import('./api.types').LlmDefaults>('/ops/llm-defaults');
 
   researchPreview = (channelUrl: string) => this.post<ResearchPreview>('/library/research/preview', { channelUrl });
   startResearch = (channelUrl: string) => this.post<ChannelSummary>('/library/research', { channelUrl });

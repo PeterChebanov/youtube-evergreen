@@ -25,6 +25,8 @@
   @if (error()) { <div class="banner">{{ error() }}</div> }
   @if (done()) { <div class="banner">This script is finished and saved to My Videos.</div> }
 
+  <es-project-ai-settings [project]="project()" mode="writer" />
+
   <div class="grid grid-writer">
     <section class="panel">
       <div class="panel-head"><h2>Chapters</h2></div>

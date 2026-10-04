@@ -16,4 +16,14 @@ export class OpsController {
   spend(@Query('days', new DefaultValuePipe(30), ParseIntPipe) days: number) {
     return this.ops.spend(days);
   }
+
+  @Get('search-options')
+  searchOptions() {
+    return this.ops.searchOptions();
+  }
+
+  @Get('llm-defaults')
+  llmDefaults() {
+    return this.ops.llmDefaults();
+  }
 }

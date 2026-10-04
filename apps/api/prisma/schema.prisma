@@ -199,6 +199,9 @@ model Project {
   sourceVideoSnapshot    Json?           @map("source_video_snapshot")
   shallowResearch        Json?           @map("shallow_research")
   toneReferenceVideoIds  String[]        @default([]) @map("tone_reference_video_ids")
+  searchProviders        String[]        @default([]) @map("search_providers")
+  llmResearchModel       String?         @map("llm_research_model")
+  llmWriterModel         String?         @map("llm_writer_model")
   topic                  String?
   subtopic               String?
   createdAt              DateTime        @default(now()) @map("created_at")

@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import type { OpsStatus } from '@youtube-ai-tool/shared';
+import type { LlmDefaults, OpsStatus, SearchOption } from '@youtube-ai-tool/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LlmService } from '../llm/llm.service';
 import { QueueService } from '../queue/queue.service';
+import { SearchService } from '../search/search.service';
 import { StyleService } from '../style/style.service';
 import { QuotaService } from '../youtube/quota.service';
 
@@ -19,8 +20,17 @@ export class OpsService {
     private readonly queue: QueueService,
     private readonly quota: QuotaService,
     private readonly llm: LlmService,
+    private readonly search: SearchService,
     private readonly style: StyleService,
   ) {}
+
+  searchOptions(): SearchOption[] {
+    return this.search.options();
+  }
+
+  llmDefaults(): LlmDefaults {
+    return { researchModel: this.llm.researchDefaultModel(), writerModel: this.llm.writerDefaultModel() };
+  }
 
   /** Data for the status bar. */
   async status(): Promise<OpsStatus> {

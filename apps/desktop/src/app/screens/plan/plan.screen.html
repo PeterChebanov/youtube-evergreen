@@ -20,6 +20,8 @@
   @if (!editable()) {
     <div class="banner">The plan is approved. Facts are researched on the Fact research tab.</div>
   }
+
+  <es-project-ai-settings [project]="p" mode="research" />
   @if (state()?.error || actionError()) {
     <div class="banner row-between"><span>{{ state()?.error || actionError() }}</span>
       @if (state()?.error) { <button class="btn btn-sm" type="button" (click)="tryAgain()">Try again</button> }

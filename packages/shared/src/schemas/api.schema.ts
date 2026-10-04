@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { PROJECT_STATUSES } from '../projects/project-status';
+import { SEARCH_PROVIDER_IDS } from '../search/providers';
 import { FACT_RELATIONS } from './writer.schema';
 
 export const CHANNEL_STATUSES = ['collecting', 'analyzing', 'ready', 'analysis_failed', 'partial'] as const;
@@ -57,7 +58,23 @@ export const projectSchema = z.object({
   toneReferenceVideoIds: z.array(z.string()),
   useDatabase: z.boolean(),
   topic: z.string().nullable(),
+  searchProviders: z.array(z.enum(SEARCH_PROVIDER_IDS)),
+  llmResearchModel: z.string().nullable(),
+  llmWriterModel: z.string().nullable(),
 });
+
+export const searchOptionSchema = z.object({
+  id: z.enum(SEARCH_PROVIDER_IDS),
+  label: z.string(),
+  configured: z.boolean(),
+});
+export type SearchOption = z.infer<typeof searchOptionSchema>;
+
+export const llmDefaultsSchema = z.object({
+  researchModel: z.string(),
+  writerModel: z.string(),
+});
+export type LlmDefaults = z.infer<typeof llmDefaultsSchema>;
 
 export type ProjectDto = z.infer<typeof projectSchema>;
 
