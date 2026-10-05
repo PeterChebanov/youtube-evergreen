@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PROJECT_LLM_STAGES, type LlmCatalog, type LlmDefaults, type OpsStatus, type SearchOption } from '@youtube-ai-tool/shared';
+import { LLM_STAGES, type LlmCatalog, type LlmDefaults, type OpsStatus, type SearchOption } from '@youtube-ai-tool/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LlmService } from '../llm/llm.service';
 import { QueueService } from '../queue/queue.service';
@@ -33,15 +33,17 @@ export class OpsService {
   }
 
   llmCatalog(): LlmCatalog {
+    const vendors = this.llm.configuredVendors();
     return {
-      providers: this.llm.configuredProviders(),
-      stages: PROJECT_LLM_STAGES.map((s) => ({
+      vendors,
+      stages: LLM_STAGES.map((s) => ({
         id: s.id,
         label: s.label,
         hint: s.hint,
+        projectScoped: s.projectScoped,
+        defaultVendor: vendors.find((v) => v.modelRef === this.llm.defaultModelFor(s.id))?.id ?? null,
         defaultModel: this.llm.defaultModelFor(s.id),
       })),
-      modelPresets: this.llm.modelPresets(),
     };
   }
 

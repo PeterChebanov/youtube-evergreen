@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { appConfig, AppConfig } from '../../config/app.config';
 import { DomainError } from '../../common/domain-error';
 import type { PrismaService } from '../../prisma/prisma.service';
+import { LlmContextService } from './llm-context.service';
 import { LlmService } from './llm.service';
 import type { LlmChatRequest, LlmChatResponse, LlmProvider } from './llm.types';
 
@@ -24,7 +25,11 @@ function setup(replies: Array<Partial<LlmChatResponse>>) {
     project: { findUnique: async () => null },
   };
   const config = new ConfigService(appConfig()) as unknown as ConfigService<AppConfig, true>;
-  const service = new LlmService(provider, prisma as unknown as PrismaService, config);
+  const llmContext = {
+    runOverrides: () => undefined,
+    withRunOverrides: async <T>(_o: unknown, fn: () => Promise<T>) => fn(),
+  } as LlmContextService;
+  const service = new LlmService(provider, prisma as unknown as PrismaService, llmContext, config);
   return { service, requests, logged };
 }
 

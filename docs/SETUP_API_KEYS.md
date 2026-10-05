@@ -11,7 +11,7 @@
 | `DATABASE_URL` | да | Postgres (обычно через `pnpm docker:up`) |
 | `REDIS_URL` | да | Очереди BullMQ (Research, facts, …) |
 | `YOUTUBE_API_KEY` | да для реального Research | Без ключа — **Mock YouTube**, 12 фиктивных роликов и имя `Mock …` |
-| `LLM_PROVIDER=openai` + `OPENAI_API_KEY` | да для реального AI | Без этого — **Mock LLM**, фиктивные анализы и тексты |
+| Хотя бы один ключ LLM (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, …) | да для реального AI | Без ключей (или с `LLM_PROVIDER=mock`) — **Mock LLM** |
 
 Остальное ниже — для полного пайплайна (факты из веба, субтитры, embeddings).
 
@@ -43,33 +43,22 @@ cp config/env.example .env
 | `YOUTUBE_QUOTA_RESERVE_UNITS` | нет (200) | Запас до паузы `paused_quota` |
 | `SHORTS_MIN_DURATION_SEC` | нет (60) | Ролики короче считаются Shorts и **не** попадают в long-form research |
 
-### LLM (все этапы: анализ роликов, Advice, Plan, Facts extract, Writer, …)
+### LLM (пять вендоров, одна модель на вендор из `.env`)
 
-| Переменная | Обязательно | Назначение |
-|---|---|---|
-| `LLM_PROVIDER` | да | `mock` — заглушка; **`openai`** — реальные вызовы |
-| `OPENAI_API_KEY` | да при `openai` | Ключ провайдера с **Chat Completions + JSON** и **Embeddings** |
-| `LLM_EMBEDDING_MODEL` | нет | Модель embeddings (pgvector, Advice «похожие темы») |
-| `LLM_MODEL_DEFAULT` | нет | Fallback, если не задана модель для промпта |
-| `LLM_MODEL_VIDEO_BASIC` | нет | Базовый AI-анализ каждого ролика при Research |
-| `LLM_MODEL_VIDEO_STRUCTURE` | нет | Главы/структура по необходимости |
-| `LLM_MODEL_AUTHOR_STYLE` | нет | AuthorStyle — «фишки автора» канала |
-| `LLM_MODEL_GENRE_PRACTICES` | нет | Жанры |
-| `LLM_MODEL_CHANNEL_STYLE` | нет | Общий ChannelStyle |
-| `LLM_MODEL_TRANSCRIPT_ANALYSIS` | нет | Анализ тона по субтитрам |
-| `LLM_MODEL_ADVICE` | нет | 3 темы Advice |
-| `LLM_MODEL_PLANNING` | нет | План ролика |
-| `LLM_MODEL_RESEARCH_QUERIES` | нет | Поисковые запросы для fact research |
-| `LLM_MODEL_FACT_EXTRACT` | нет | Извлечение фактов со страниц |
-| `LLM_MODEL_WRITER` | нет | Написание главы |
-| `LLM_MODEL_WRITER_REFINE` | нет | Refine главы |
-| `LLM_MODEL_CHAPTER_SUMMARY` | нет | Резюме главы для следующих |
-| `LLM_PRICE_INPUT_PER_1M` | нет | Оценка стоимости Research в UI ($/1M input tokens) |
-| `LLM_PRICE_OUTPUT_PER_1M` | нет | То же для output |
-| `LLM_EST_INPUT_TOKENS_PER_VIDEO` | нет | Оценка токенов на ролик в попапе Research |
-| `LLM_EST_OUTPUT_TOKENS_PER_VIDEO` | нет | То же output |
+Настройте **ключ + модель** для каждого провайдера, который хотите видеть в dropdown UI. На каждом AI-шаге в приложении выбирается **один** вендор (GPT / Claude / Gemini / Grok / Perplexity).
 
-Имена промптов в коде: `apps/api/src/modules/llm/prompt-names.ts`.
+| Переменная | Назначение |
+|---|---|
+| `LLM_PROVIDER=mock` | Принудительная заглушка даже при наличии ключей (обычно не нужно) |
+| `OPENAI_API_KEY` + `OPENAI_MODEL` | GPT; **embeddings** тоже через OpenAI |
+| `ANTHROPIC_API_KEY` + `ANTHROPIC_MODEL` | Claude |
+| `GEMINI_API_KEY` + `GEMINI_MODEL` | Gemini |
+| `XAI_API_KEY` + `XAI_MODEL` | Grok |
+| `PERPLEXITY_API_KEY` + `PERPLEXITY_MODEL` | Sonar chat (не путать с веб-поиском ниже) |
+| `LLM_EMBEDDING_MODEL` | Модель embeddings (pgvector, Advice) |
+| `LLM_PRICE_*`, `LLM_EST_*` | Оценка стоимости Research в UI |
+
+Defaults по этапам задаёт сервер (`stageDefaults` в `app.config.ts`); в UI можно переопределить вендор на проект (Plan/Facts/Writer) или на запуск (Research, Advice, Subtitles, Style).
 
 ### Субтитры (вкладка Subtitles, тон для Writer)
 
@@ -96,7 +85,7 @@ cp config/env.example .env
 | `PERPLEXITY_API_KEY` | [Perplexity Search API](https://docs.perplexity.ai/) — веб-поиск (отдельно от Sonar chat) |
 | `REDDIT_CLIENT_ID` + `REDDIT_CLIENT_SECRET` | Reddit API (опционально) |
 
-На вкладках **Plan**, **Fact research** и **Writer** блок **Project AI** сохраняет источники веб-поиска (чекбоксы) и модель **на каждый шаг** pipeline (формат `provider:model-id`, например `perplexity:sonar-pro`, `anthropic:claude-sonnet-4-5-20250929`).
+На вкладках **Plan**, **Fact research** и **Writer** блок **Project AI**: чекбоксы веб-поиска (Tavily, Brave, …) и dropdown LLM **на каждый шаг** pipeline.
 | `SEARCH_RESULTS_PER_QUERY` | Сколько ссылок на запрос |
 | `SEARCH_MAX_PAGES_PER_CHAPTER` | Лимит страниц на главу |
 | `SEARCH_FETCH_TIMEOUT_MS` | Таймаут загрузки страницы |

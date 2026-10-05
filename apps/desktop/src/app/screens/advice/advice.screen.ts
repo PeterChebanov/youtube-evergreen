@@ -3,7 +3,10 @@ import { DEFAULT_PERIOD, PERIOD_OPTIONS, extractYoutubeVideoId } from '@youtube-
 import { Api, errorText } from '../../core/api.service';
 import type { AdviceRunResult, Genre, ProjectDto } from '../../core/api.types';
 import { Nav, ProjectStore } from '../../core/stores';
+import type { LlmCatalog } from '../../core/api.types';
+import { defaultVendorForStage, overridesForStage } from '../../core/llm-preferences';
 import { Check } from '../../ui/check';
+import { LlmVendorSelect } from '../../ui/llm-vendor-select';
 import { PlanStore } from '../plan/plan.store';
 import { genreLabel, sourceCell } from './advice.view';
 
@@ -12,7 +15,7 @@ const DEFAULT_PERIOD_INDEX = PERIOD_OPTIONS.findIndex((o) => JSON.stringify(o.va
 @Component({
   selector: 'section[esAdvice]',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Check],
+  imports: [Check, LlmVendorSelect],
   host: { class: 'screen', id: 'screen-advice', 'data-screen': 'advice', '(document:click)': 'genreMenu.set(false)' },
   templateUrl: './advice.screen.html',
 })
@@ -46,6 +49,8 @@ export class AdviceScreen {
   readonly language = signal<'ru' | 'en'>('ru');
   readonly requestError = signal<string | null>(null);
   readonly sending = signal(false);
+  readonly catalog = signal<LlmCatalog | null>(null);
+  readonly adviceVendor = signal<string | null>(null);
 
   readonly approvedGenres = computed(() => this.genres().filter((g) => g.status === 'approved'));
   readonly genreText = computed(() => genreLabel(this.genreIds(), new Map(this.genres().map((g) => [g.id, g.name]))));
@@ -53,6 +58,10 @@ export class AdviceScreen {
 
   constructor() {
     this.api.genres().then((g) => this.genres.set(g), () => this.genres.set([]));
+    void this.api.llmCatalog().then((c) => {
+      this.catalog.set(c);
+      this.adviceVendor.set(defaultVendorForStage('advice', c));
+    });
   }
 
   focus(mode: 'advice' | 'custom') {
@@ -78,6 +87,7 @@ export class AdviceScreen {
           genreIds: this.genreIds(),
           skipMyVideos: this.skipMine(),
           language: this.language(),
+          llmModelOverrides: overridesForStage('advice', this.adviceVendor()),
         }),
       );
       this.selected.set(0);

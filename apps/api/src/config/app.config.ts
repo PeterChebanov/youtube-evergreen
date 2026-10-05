@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { formatModelRef } from '@youtube-ai-tool/shared';
+import { formatModelRef, vendorModelRefFromEnv, type LlmStageId, type LlmVendorId } from '@youtube-ai-tool/shared';
 import type { PromptName } from '../modules/llm/prompt-names';
 
 const str = (name: string, fallback = '') => process.env[name]?.trim() || fallback;
@@ -12,38 +12,109 @@ const num = (name: string, fallback: number) => {
   return Number.isFinite(v) ? v : fallback;
 };
 
-function defaultPipelineModels() {
-  const openaiDefault = str('LLM_MODEL_DEFAULT', 'gpt-4o-mini');
-  const perplexityModel = str('PERPLEXITY_MODEL', 'sonar-pro');
-  const research =
-    str('LLM_MODEL_RESEARCH_QUERIES') ||
-    (str('PERPLEXITY_API_KEY') ? formatModelRef('perplexity', perplexityModel) : openaiDefault);
-  const anthropicSonnet = str('ANTHROPIC_MODEL', 'claude-sonnet-4-5-20250929');
-  const anthropicOpus = str('ANTHROPIC_OPUS_MODEL', 'claude-opus-4-5-20251101');
-  const writerAnthropicId = anthropicOpus || anthropicSonnet;
-  const writer =
-    str('LLM_MODEL_WRITER') ||
-    (str('ANTHROPIC_API_KEY') ? formatModelRef('anthropic', writerAnthropicId) : str('LLM_MODEL_DEFAULT', 'gpt-4o'));
-  const writerSummary =
-    str('LLM_MODEL_CHAPTER_SUMMARY') ||
-    (str('ANTHROPIC_API_KEY') ? formatModelRef('anthropic', anthropicSonnet) : openaiDefault);
+const VENDOR_ORDER = ['perplexity', 'anthropic', 'openai', 'gemini', 'xai'] as const;
 
-  const defaults: Record<PromptName, string> = {
-    video_basic: str('LLM_MODEL_VIDEO_BASIC', openaiDefault),
-    video_structure: str('LLM_MODEL_VIDEO_STRUCTURE', openaiDefault),
-    author_style: str('LLM_MODEL_AUTHOR_STYLE', openaiDefault),
-    genre_practices: str('LLM_MODEL_GENRE_PRACTICES', openaiDefault),
-    channel_style: str('LLM_MODEL_CHANNEL_STYLE', str('LLM_MODEL_DEFAULT', 'gpt-4o')),
-    transcript_analysis: str('LLM_MODEL_TRANSCRIPT_ANALYSIS', openaiDefault),
-    advice: str('LLM_MODEL_ADVICE', str('LLM_MODEL_DEFAULT', 'gpt-4o')),
-    planning: str('LLM_MODEL_PLANNING', research),
-    research_queries: str('LLM_MODEL_RESEARCH_QUERIES', research),
-    fact_extract: str('LLM_MODEL_FACT_EXTRACT', research),
-    writer: writer,
-    writer_refine: str('LLM_MODEL_WRITER_REFINE', writer),
-    chapter_summary: writerSummary,
+function buildLlmBlock() {
+  const providers = {
+    openai: {
+      apiKey: str('OPENAI_API_KEY'),
+      baseUrl: str('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
+      model: str('OPENAI_MODEL', 'gpt-4o-mini'),
+    },
+    gemini: {
+      apiKey: str('GEMINI_API_KEY'),
+      baseUrl: str('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai'),
+      model: str('GEMINI_MODEL', 'gemini-2.0-flash'),
+    },
+    xai: {
+      apiKey: str('XAI_API_KEY'),
+      baseUrl: str('XAI_BASE_URL', 'https://api.x.ai/v1'),
+      model: str('XAI_MODEL', 'grok-2-latest'),
+    },
+    anthropic: {
+      apiKey: str('ANTHROPIC_API_KEY'),
+      baseUrl: str('ANTHROPIC_BASE_URL', 'https://api.anthropic.com'),
+      apiVersion: str('ANTHROPIC_VERSION', '2023-06-01'),
+      maxTokens: int('ANTHROPIC_MAX_TOKENS', 8192),
+      model: str('ANTHROPIC_MODEL', 'claude-sonnet-4-5-20250929'),
+    },
+    perplexity: {
+      apiKey: str('PERPLEXITY_API_KEY'),
+      baseUrl: str('PERPLEXITY_BASE_URL', 'https://api.perplexity.ai'),
+      model: str('PERPLEXITY_MODEL', 'sonar-pro'),
+    },
   };
-  return defaults;
+
+  const llm = {
+    providers,
+    embeddingModel: str('LLM_EMBEDDING_MODEL', 'text-embedding-3-small'),
+    priceInputPer1M: num('LLM_PRICE_INPUT_PER_1M', 0.15),
+    priceOutputPer1M: num('LLM_PRICE_OUTPUT_PER_1M', 0.6),
+    estInputTokensPerVideo: int('LLM_EST_INPUT_TOKENS_PER_VIDEO', 350),
+    estOutputTokensPerVideo: int('LLM_EST_OUTPUT_TOKENS_PER_VIDEO', 120),
+  };
+
+  const envVendors = {
+    openai: { apiKey: providers.openai.apiKey, model: providers.openai.model },
+    anthropic: { apiKey: providers.anthropic.apiKey, model: providers.anthropic.model },
+    gemini: { apiKey: providers.gemini.apiKey, model: providers.gemini.model },
+    xai: { apiKey: providers.xai.apiKey, model: providers.xai.model },
+    perplexity: { apiKey: providers.perplexity.apiKey, model: providers.perplexity.model },
+  };
+
+  const pick = (...vendors: LlmVendorId[]): string => {
+    for (const v of vendors) {
+      const ref = vendorModelRefFromEnv(envVendors, v);
+      if (ref) return ref;
+    }
+    for (const v of VENDOR_ORDER) {
+      const ref = vendorModelRefFromEnv(envVendors, v);
+      if (ref) return ref;
+    }
+    return formatModelRef('openai', 'gpt-4o-mini');
+  };
+
+  const research = pick('perplexity', 'openai', 'anthropic', 'gemini', 'xai');
+  const writer = pick('anthropic', 'openai', 'gemini', 'xai', 'perplexity');
+  const general = pick('anthropic', 'openai', 'gemini', 'xai', 'perplexity');
+
+  const stageDefaults: Record<LlmStageId, string> = {
+    video_basic: general,
+    video_structure: general,
+    author_style: general,
+    transcript_analysis: general,
+    genre_practices: general,
+    channel_style: general,
+    advice: general,
+    plan_shallow_queries: research,
+    planning: research,
+    fact_research_queries: research,
+    fact_extract: research,
+    writer,
+    writer_refine: writer,
+    chapter_summary: pick('anthropic', 'openai', 'gemini', 'xai', 'perplexity'),
+  };
+
+  const models: Record<PromptName, string> = {
+    video_basic: stageDefaults.video_basic,
+    video_structure: stageDefaults.video_structure,
+    author_style: stageDefaults.author_style,
+    genre_practices: stageDefaults.genre_practices,
+    channel_style: stageDefaults.channel_style,
+    transcript_analysis: stageDefaults.transcript_analysis,
+    advice: stageDefaults.advice,
+    planning: stageDefaults.planning,
+    research_queries: stageDefaults.plan_shallow_queries,
+    fact_extract: stageDefaults.fact_extract,
+    writer: stageDefaults.writer,
+    writer_refine: stageDefaults.writer_refine,
+    chapter_summary: stageDefaults.chapter_summary,
+  };
+
+  const hasAnyKey = VENDOR_ORDER.some((v) => vendorModelRefFromEnv(envVendors, v));
+  const mode = str('LLM_PROVIDER') === 'mock' || !hasAnyKey ? ('mock' as const) : ('live' as const);
+
+  return { ...llm, mode, stageDefaults, models };
 }
 
 export type AppConfig = ReturnType<typeof appConfig>;
@@ -52,44 +123,7 @@ export const appConfig = () => ({
   port: int('PORT', 3000),
   redisUrl: str('REDIS_URL', 'redis://localhost:6379'),
   promptsDir: str('PROMPTS_DIR', join(__dirname, '..', 'prompts')),
-  llm: {
-    mode: str('LLM_PROVIDER') === 'mock' ? ('mock' as const) : ('live' as const),
-    providers: {
-      openai: {
-        apiKey: str('OPENAI_API_KEY'),
-        baseUrl: str('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
-      },
-      gemini: {
-        apiKey: str('GEMINI_API_KEY'),
-        baseUrl: str('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai'),
-      },
-      xai: {
-        apiKey: str('XAI_API_KEY'),
-        baseUrl: str('XAI_BASE_URL', 'https://api.x.ai/v1'),
-      },
-      anthropic: {
-        apiKey: str('ANTHROPIC_API_KEY'),
-        baseUrl: str('ANTHROPIC_BASE_URL', 'https://api.anthropic.com'),
-        apiVersion: str('ANTHROPIC_VERSION', '2023-06-01'),
-        maxTokens: int('ANTHROPIC_MAX_TOKENS', 8192),
-        defaultModel: str('ANTHROPIC_MODEL', 'claude-sonnet-4-5-20250929'),
-        opusModel: str('ANTHROPIC_OPUS_MODEL', 'claude-opus-4-5-20251101'),
-      },
-      perplexity: {
-        apiKey: str('PERPLEXITY_API_KEY'),
-        baseUrl: str('PERPLEXITY_BASE_URL', 'https://api.perplexity.ai'),
-        defaultModel: str('PERPLEXITY_MODEL', 'sonar-pro'),
-      },
-    },
-    geminiDefaultModel: str('GEMINI_MODEL', 'gemini-2.0-flash'),
-    xaiDefaultModel: str('XAI_MODEL', 'grok-2-latest'),
-    models: defaultPipelineModels(),
-    embeddingModel: str('LLM_EMBEDDING_MODEL', 'text-embedding-3-small'),
-    priceInputPer1M: num('LLM_PRICE_INPUT_PER_1M', 0.15),
-    priceOutputPer1M: num('LLM_PRICE_OUTPUT_PER_1M', 0.6),
-    estInputTokensPerVideo: int('LLM_EST_INPUT_TOKENS_PER_VIDEO', 350),
-    estOutputTokensPerVideo: int('LLM_EST_OUTPUT_TOKENS_PER_VIDEO', 120),
-  },
+  llm: buildLlmBlock(),
   youtube: {
     apiKey: str('YOUTUBE_API_KEY'),
     dailyQuotaUnits: int('YOUTUBE_DAILY_QUOTA_UNITS', 10000),

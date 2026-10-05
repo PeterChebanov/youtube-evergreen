@@ -9,7 +9,6 @@
       }
     </div>
     <div class="nav-right">
-      <button class="kbtn" type="button" (click)="palette.set(true)">Jump · ⌘K</button>
       <es-project-menu />
     </div>
   </nav>
@@ -37,7 +36,4 @@
   </footer>
 </div>
 
-@if (palette()) {
-  <es-palette (closed)="palette.set(false)" />
-}
 <es-dialog-host />

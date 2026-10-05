@@ -11,7 +11,6 @@ import { StyleScreen } from './screens/style/style.screen';
 import { SubtitlesScreen } from './screens/subtitles/subtitles.screen';
 import { VideosScreen } from './screens/videos/videos.screen';
 import { WriterScreen } from './screens/writer/writer.screen';
-import { Palette } from './shell/palette';
 import { ProjectMenu } from './shell/project-menu';
 import { DialogHost } from './ui/dialog';
 
@@ -23,7 +22,6 @@ import { DialogHost } from './ui/dialog';
     DatabaseScreen,
     DialogHost,
     FactsScreen,
-    Palette,
     PlanScreen,
     ProjectMenu,
     ResearchScreen,
@@ -40,7 +38,6 @@ export class App {
   readonly status = inject(StatusStore);
   private readonly projects = inject(ProjectStore);
   readonly tabs = TABS;
-  readonly palette = signal(false);
   private readonly chord = createChordReader();
 
   readonly queues = computed(() => {
@@ -60,13 +57,7 @@ export class App {
   }
 
   onKey(event: KeyboardEvent) {
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-      event.preventDefault();
-      this.palette.update((v) => !v);
-      return;
-    }
-    if (event.key === 'Escape') this.palette.set(false);
-    if (event.metaKey || event.ctrlKey || event.altKey || isTypingTarget(event.target) || this.palette()) return;
+    if (event.metaKey || event.ctrlKey || event.altKey || isTypingTarget(event.target)) return;
     const target = this.chord(event.key);
     if (target) this.nav.go(target);
   }

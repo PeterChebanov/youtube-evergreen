@@ -40,6 +40,7 @@ export class AnalysisService {
 
     const { data } = await this.llm.completeStructured({
       promptName: 'video_basic',
+      stageId: 'video_basic',
       system: await this.composer.single('video_basic'),
       user: {
         genres: genres.map((g) => g.name),
@@ -88,6 +89,7 @@ export class AnalysisService {
     const genres = await this.prisma.genre.findMany({ select: { name: true } });
     const { data } = await this.llm.completeStructured({
       promptName: 'video_basic',
+      stageId: 'video_basic',
       system: await this.composer.single('video_basic'),
       user: {
         genres: genres.map((g) => g.name),
@@ -111,6 +113,7 @@ export class AnalysisService {
 
     const { data } = await this.llm.completeStructured({
       promptName: 'author_style',
+      stageId: 'author_style',
       system: await this.composer.single('author_style'),
       user: {
         channelName: channel.channelName,
@@ -154,6 +157,7 @@ export class AnalysisService {
 
     const { data } = await this.llm.completeStructured({
       promptName: 'video_structure',
+      stageId: 'video_structure',
       system: await this.composer.single('video_structure'),
       user: {
         title: video.title,
@@ -201,6 +205,7 @@ export class AnalysisService {
     }
     const { data } = await this.llm.completeStructured({
       promptName: 'transcript_analysis',
+      stageId: 'transcript_analysis',
       system: await this.composer.single('transcript_analysis'),
       user: { title: video.title, transcript: video.transcript!.slice(0, TRANSCRIPT_LIMIT) },
       schema: transcriptAnalysisSchema,

@@ -18,6 +18,7 @@ import type {
   PlanVersion,
   ProjectDto,
   ResearchPreview,
+  ResearchRequestBody,
   SubtitleCheck,
   SubtitlesFetchResult,
   TopicMemory,
@@ -67,10 +68,11 @@ export class Api {
   llmDefaults = () => this.get<import('./api.types').LlmDefaults>('/ops/llm-defaults');
   llmCatalog = () => this.get<import('./api.types').LlmCatalog>('/ops/llm-catalog');
 
-  researchPreview = (channelUrl: string) => this.post<ResearchPreview>('/library/research/preview', { channelUrl });
-  startResearch = (channelUrl: string) => this.post<ChannelSummary>('/library/research', { channelUrl });
+  researchPreview = (body: ResearchRequestBody) => this.post<ResearchPreview>('/library/research/preview', body);
+  startResearch = (body: ResearchRequestBody) => this.post<ChannelSummary>('/library/research', body);
   retryResearch = (jobId: string) => this.post<ChannelSummary>(`/library/research-jobs/${jobId}/retry`);
-  rerunChannel = (channelId: string) => this.post<ChannelSummary>(`/library/channels/${channelId}/rerun`);
+  rerunChannel = (channelId: string, llmModelOverrides?: Record<string, string>) =>
+    this.post<ChannelSummary>(`/library/channels/${channelId}/rerun`, llmModelOverrides ? { llmModelOverrides } : {});
   refreshViews = () => this.post<{ queued: number }>('/library/refresh');
   channels = () => this.get<ChannelSummary[]>('/library/channels');
   channel = (id: string) => this.get<ChannelDetail>(`/library/channels/${id}`);
@@ -115,7 +117,8 @@ export class Api {
   checkSubtitles = (url: string) => this.post<SubtitleCheck>('/subtitles/check', { url });
   fetchSubtitles = (body: { url: string; confirmTitleMismatch?: boolean; confirmAddVideo?: boolean; confirmOverwrite?: boolean }) =>
     this.post<SubtitlesFetchResult>('/subtitles/fetch', body);
-  analyzeTranscript = (videoId: string) => this.post<unknown>(`/subtitles/videos/${videoId}/analyze`);
+  analyzeTranscript = (videoId: string, llmModelOverrides?: Record<string, string>) =>
+    this.post<unknown>(`/subtitles/videos/${videoId}/analyze`, llmModelOverrides ? { llmModelOverrides } : {});
 
   dbTables = () => this.get<DbTable[]>('/database/tables');
   dbRows = (table: string, query: DbQuery) => this.get<DbPage>(`/database/tables/${table}`, toParams(query));
@@ -126,7 +129,8 @@ export class Api {
 
   style = () => this.get<ChannelStyle | null>('/style');
   saveStyle = (body: Pick<ChannelStyle, 'voice' | 'themes' | 'techniques' | 'retentionRules'>) => this.put<ChannelStyle>('/style', body);
-  draftStyle = () => this.post<ChannelStyle>('/style/draft');
+  draftStyle = (llmModelOverrides?: Record<string, string>) =>
+    this.post<ChannelStyle>('/style/draft', llmModelOverrides ? { llmModelOverrides } : {});
 }
 
 function run<T>(request: Observable<T>): Promise<T> {

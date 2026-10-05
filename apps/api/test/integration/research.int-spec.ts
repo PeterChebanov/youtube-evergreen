@@ -53,6 +53,15 @@ describe('Research a channel', () => {
     expect(await h.prisma.researchSnapshot.count({ where: { video: { channelId: channel.id } } })).toBe(22);
   });
 
+  it('limits collection to a published date range', async () => {
+    await h.http()
+      .post('/library/research')
+      .send({ channelUrl: '@history-lab', publishedAfter: '2030-01-01', publishedBefore: '2030-12-31' })
+      .expect(201);
+    await waitFor(() => channelSummary(h, (await h.prisma.channel.findFirstOrThrow()).id), (c) => c.researchStatus === 'ready');
+    expect(await h.prisma.video.count()).toBe(0);
+  });
+
   it('does not start a second research of a channel while one is running', async () => {
     const started = await h.http().post('/library/research').send({ channelUrl: '@history-lab' }).expect(201);
     await h.http().post('/library/research').send({ channelUrl: '@history-lab' }).expect(409);

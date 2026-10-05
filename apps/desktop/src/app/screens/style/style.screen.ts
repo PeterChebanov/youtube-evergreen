@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Api, errorText } from '../../core/api.service';
-import type { ChannelStyle, Genre } from '../../core/api.types';
+import type { ChannelStyle, Genre, LlmCatalog } from '../../core/api.types';
+import { defaultVendorForStage, overridesForStage } from '../../core/llm-preferences';
+import { LlmVendorSelect } from '../../ui/llm-vendor-select';
 import { formatDate } from '../../core/format';
 import { StatusStore } from '../../core/stores';
 import { formatTechniques, parseTechniques } from './style.view';
@@ -8,6 +10,7 @@ import { formatTechniques, parseTechniques } from './style.view';
 @Component({
   selector: 'section[esStyle]',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [LlmVendorSelect],
   host: { class: 'screen', id: 'screen-style', 'data-screen': 'style' },
   templateUrl: './style.screen.html',
 })
@@ -26,6 +29,8 @@ export class StyleScreen {
   readonly busy = signal(false);
   readonly error = signal<string | null>(null);
   readonly notice = signal<string | null>(null);
+  readonly catalog = signal<LlmCatalog | null>(null);
+  readonly styleVendor = signal<string | null>(null);
 
   readonly versionMeta = computed(() => {
     const s = this.style();
@@ -35,6 +40,10 @@ export class StyleScreen {
 
   constructor() {
     void this.load();
+    void this.api.llmCatalog().then((c) => {
+      this.catalog.set(c);
+      this.styleVendor.set(defaultVendorForStage('channel_style', c));
+    });
   }
 
   async load() {
@@ -63,7 +72,7 @@ export class StyleScreen {
 
   draft() {
     return this.act(async () => {
-      this.fill(await this.api.draftStyle());
+      this.fill(await this.api.draftStyle(overridesForStage('channel_style', this.styleVendor())));
       this.notice.set('Drafted from the author styles and saved as a new version. Edit and save again if needed.');
     });
   }

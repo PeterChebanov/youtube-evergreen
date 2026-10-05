@@ -4,6 +4,14 @@
     <p class="sub">Our channel voice, versioned on every save, and the genre modules Writer uses.</p>
   </div>
   <div class="actions">
+    <es-llm-vendor-select
+      label="Style LLM"
+      stageId="channel_style"
+      [catalog]="catalog()"
+      [vendor]="styleVendor()"
+      [disabled]="busy()"
+      (vendorChange)="styleVendor.set($event)"
+    />
     <button class="btn" type="button" [disabled]="busy()" (click)="draft()">Draft from authors</button>
     <button class="btn btn-primary" type="button" [disabled]="busy() || !canSave()" (click)="saveStyle()">Save version</button>
   </div>

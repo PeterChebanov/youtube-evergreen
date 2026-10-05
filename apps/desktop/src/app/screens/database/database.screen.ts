@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signa
 import { Api, errorText } from '../../core/api.service';
 import type { DbColumn, DbRow, DbTable } from '../../core/api.types';
 import { copyText } from '../../core/clipboard';
-import { columnViews, pagesFor, tableWidth, visibleRange } from './database.view';
+import { applyTableLayout, moveColumn, readTableLayout, saveTableLayout } from './database-layout';
+import { pagesFor, tableWidth, visibleRange } from './database.view';
 
 const PAGE = 200;
 const ROW_H = 30;
@@ -35,7 +36,18 @@ export class DatabaseScreen {
   private generation = 0;
   private filterTimer: ReturnType<typeof setTimeout> | undefined;
 
-  readonly views = computed(() => columnViews(this.columns()));
+  readonly layoutPrefs = signal<{ order: string[]; widths: Record<string, number> }>({ order: [], widths: {} });
+  readonly dragCol = signal<number | null>(null);
+
+  readonly views = computed(() => {
+    const cols = this.columns();
+    if (!cols.length) return [];
+    const prefs = this.layoutPrefs();
+    return applyTableLayout(cols, {
+      order: prefs.order.length ? prefs.order : undefined,
+      widths: prefs.widths,
+    });
+  });
   readonly width = computed(() => tableWidth(this.views()));
   readonly range = computed(() => visibleRange(this.scroll().top, this.scroll().height, ROW_H, this.total() ?? 0));
   readonly rows = computed(() => {
@@ -62,13 +74,71 @@ export class DatabaseScreen {
 
   constructor() {
     this.api.dbTables().then((t) => this.tables.set(t), (e) => this.error.set(errorText(e)));
+    this.loadLayout(this.table());
     void this.reset();
   }
 
   selectTable(name: string) {
     this.table.set(name);
     this.sort.set(null);
+    this.loadLayout(name);
     void this.reset();
+  }
+
+  private loadLayout(table: string) {
+    const saved = readTableLayout(table);
+    this.layoutPrefs.set({ order: saved?.order ?? [], widths: saved?.widths ?? {} });
+  }
+
+  dragStart(index: number, event: DragEvent) {
+    event.dataTransfer?.setData('text/plain', String(index));
+    event.dataTransfer!.effectAllowed = 'move';
+    this.dragCol.set(index);
+  }
+
+  dragOver(event: DragEvent) {
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  }
+
+  dropColumn(toIndex: number, event: DragEvent) {
+    event.preventDefault();
+    const from = Number(event.dataTransfer?.getData('text/plain'));
+    if (!Number.isFinite(from)) return;
+    const order = this.views().map((v) => v.name);
+    this.persistLayout({ order: moveColumn(order, from, toIndex) });
+    this.dragCol.set(null);
+  }
+
+  dragEnd() {
+    this.dragCol.set(null);
+  }
+
+  startResize(column: string, event: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    const th = (event.target as HTMLElement).closest('th');
+    const startX = event.clientX;
+    const startW = th?.offsetWidth ?? this.views().find((v) => v.name === column)?.width ?? 200;
+    const move = (ev: MouseEvent) => {
+      const w = Math.max(48, startW + ev.clientX - startX);
+      this.layoutPrefs.update((p) => ({ ...p, widths: { ...p.widths, [column]: w } }));
+    };
+    const up = () => {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+      this.persistLayout({});
+    };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  }
+
+  private persistLayout(partial: { order?: string[] }) {
+    const table = this.table();
+    const prev = this.layoutPrefs();
+    const next = { order: partial.order ?? prev.order, widths: { ...prev.widths } };
+    this.layoutPrefs.set(next);
+    saveTableLayout(table, { order: next.order.length ? next.order : undefined, widths: next.widths });
   }
 
   setFilter(value: string) {

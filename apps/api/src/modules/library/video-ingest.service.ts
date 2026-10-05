@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { formatChannelHandleLabel } from '@youtube-ai-tool/shared';
 import { ConfigService } from '@nestjs/config';
 import { invalid } from '../../common/domain-error';
 import type { AppConfig } from '../../config/app.config';
@@ -41,10 +42,13 @@ export class VideoIngestService {
 
   private async create(channelId: string, v: NewVideo): Promise<string> {
     const { chapters, ...fields } = v;
+    const channel = await this.prisma.channel.findUnique({ where: { id: channelId }, select: { youtubeHandle: true } });
+    const channelHandle = formatChannelHandleLabel(channel?.youtubeHandle);
     const created = await this.prisma.video.create({
       data: {
         ...fields,
         channelId,
+        ...(channelHandle ? { channelHandle } : {}),
         chapters: {
           create: chapters.map((c) => ({
             title: c.title,

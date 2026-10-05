@@ -4,7 +4,7 @@ export type ColumnView = { name: string; width: number | null; right: boolean; m
 
 const NUMERIC = ['integer', 'bigint', 'smallint', 'numeric', 'real', 'double precision'];
 const TIME = ['timestamp without time zone', 'timestamp with time zone', 'date'];
-const WIDE_TEXT = ['title', 'name', 'channel_name', 'text', 'topic'];
+const WIDE_TEXT = ['title', 'description', 'name', 'channel_name', 'channel_handle', 'text', 'topic'];
 const UNSIZED_MIN = 240;
 export const TABLE_MIN = 960;
 

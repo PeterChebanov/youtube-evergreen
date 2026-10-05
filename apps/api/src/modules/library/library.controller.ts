@@ -1,6 +1,12 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { channelUrlRequestSchema, subtitlesCheckRequestSchema } from '@youtube-ai-tool/shared';
+import {
+  channelRerunRequestSchema,
+  channelUrlRequestSchema,
+  researchPreviewRequestSchema,
+  startResearchRequestSchema,
+  subtitlesCheckRequestSchema,
+} from '@youtube-ai-tool/shared';
 import type { z } from 'zod';
 import { ApiZodBody, ZodPipe } from '../../common/zod';
 import { AnalysisService } from '../analysis/analysis.service';
@@ -19,15 +25,15 @@ export class LibraryController {
   ) {}
 
   @Post('research/preview')
-  @ApiZodBody(channelUrlRequestSchema)
-  preview(@Body(new ZodPipe(channelUrlRequestSchema)) body: ChannelUrlBody) {
-    return this.research.preview(body.channelUrl);
+  @ApiZodBody(researchPreviewRequestSchema)
+  preview(@Body(new ZodPipe(researchPreviewRequestSchema)) body: z.output<typeof researchPreviewRequestSchema>) {
+    return this.research.preview(body.channelUrl, body);
   }
 
   @Post('research')
-  @ApiZodBody(channelUrlRequestSchema)
-  start(@Body(new ZodPipe(channelUrlRequestSchema)) body: ChannelUrlBody) {
-    return this.research.start(body.channelUrl);
+  @ApiZodBody(startResearchRequestSchema)
+  start(@Body(new ZodPipe(startResearchRequestSchema)) body: z.output<typeof startResearchRequestSchema>) {
+    return this.research.start(body.channelUrl, body.llmModelOverrides, body);
   }
 
   @Post('research-jobs/:id/retry')
@@ -56,8 +62,9 @@ export class LibraryController {
   }
 
   @Post('channels/:id/rerun')
-  rerun(@Param('id') id: string) {
-    return this.research.rerun(id);
+  @ApiZodBody(channelRerunRequestSchema)
+  rerun(@Param('id') id: string, @Body(new ZodPipe(channelRerunRequestSchema)) body: z.output<typeof channelRerunRequestSchema>) {
+    return this.research.rerun(id, body.llmModelOverrides);
   }
 
   @Post('channels/:id/reanalyze')

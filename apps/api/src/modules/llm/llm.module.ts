@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { AppConfig } from '../../config/app.config';
 import { buildLlmRouter } from './build-llm-router';
+import { LlmContextService } from './llm-context.service';
 import { LlmService } from './llm.service';
 import { LLM_PROVIDER, LlmProvider } from './llm.types';
 import { MockLlmProvider } from './providers/mock-llm.provider';
@@ -18,8 +19,9 @@ import { MockLlmProvider } from './providers/mock-llm.provider';
         return buildLlmRouter(llm);
       },
     },
+    LlmContextService,
     LlmService,
   ],
-  exports: [LlmService],
+  exports: [LlmContextService, LlmService],
 })
 export class LlmModule {}

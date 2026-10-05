@@ -1,6 +1,6 @@
 import { Body, Controller, Param, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { subtitlesCheckRequestSchema, subtitlesFetchRequestSchema } from '@youtube-ai-tool/shared';
+import { subtitlesAnalyzeRequestSchema, subtitlesCheckRequestSchema, subtitlesFetchRequestSchema } from '@youtube-ai-tool/shared';
 import type { z } from 'zod';
 import { ApiZodBody, ZodPipe } from '../../common/zod';
 import { SubtitlesService } from './subtitles.service';
@@ -23,7 +23,11 @@ export class SubtitlesController {
   }
 
   @Post('videos/:videoId/analyze')
-  analyze(@Param('videoId') videoId: string) {
-    return this.subtitles.analyze(videoId);
+  @ApiZodBody(subtitlesAnalyzeRequestSchema)
+  analyze(
+    @Param('videoId') videoId: string,
+    @Body(new ZodPipe(subtitlesAnalyzeRequestSchema)) body: z.output<typeof subtitlesAnalyzeRequestSchema>,
+  ) {
+    return this.subtitles.analyze(videoId, body.llmModelOverrides);
   }
 }

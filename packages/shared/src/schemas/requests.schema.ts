@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { llmModelOverridesSchema } from '../llm/overrides-schema';
-import { PROJECT_LLM_STAGE_IDS } from '../llm/stages';
+import { LLM_STAGE_IDS } from '../llm/stages';
+import { LLM_VENDOR_IDS } from '../llm/vendors';
 import { SEARCH_PROVIDER_IDS } from '../search/providers';
+import { researchPeriodFieldsObject, researchPeriodOrderRefine } from '../research/period';
 import { planDraftSchema } from './plan.schema';
 
 const text = z.string().trim().min(1);
@@ -12,7 +14,26 @@ const httpUrl = z
   .url()
   .refine((u) => /^https?:\/\//i.test(u), 'must be an http(s) URL');
 
-export const channelUrlRequestSchema = z.object({ channelUrl: text });
+const llmVendorSelection = z.enum(LLM_VENDOR_IDS);
+
+export const channelUrlRequestSchema = z.object({
+  channelUrl: text,
+  llmModelOverrides: llmModelOverridesSchema.optional(),
+});
+
+export const startResearchRequestSchema = channelUrlRequestSchema
+  .merge(researchPeriodFieldsObject)
+  .and(researchPeriodOrderRefine);
+
+export const researchPreviewRequestSchema = startResearchRequestSchema;
+
+export const channelRerunRequestSchema = z.object({
+  llmModelOverrides: llmModelOverridesSchema.optional(),
+});
+
+export const llmRunOverridesRequestSchema = z.object({
+  llmModelOverrides: llmModelOverridesSchema.optional(),
+});
 
 export const customRequestSchema = z.object({
   request: text,
@@ -41,8 +62,6 @@ export const updateProjectRequestSchema = z
     toneReferenceVideoIds: z.array(z.string()).max(3),
     useDatabase: z.boolean(),
     searchProviders: z.array(z.enum(SEARCH_PROVIDER_IDS)),
-    llmResearchModel: z.string().trim().min(1).nullable(),
-    llmWriterModel: z.string().trim().min(1).nullable(),
     llmModelOverrides: llmModelOverridesSchema.nullable(),
   })
   .partial();
@@ -67,6 +86,10 @@ export const addFactRequestSchema = z.object({
 export const chapterTextRequestSchema = z.object({ text });
 
 export const subtitlesCheckRequestSchema = z.object({ url: text });
+
+export const subtitlesAnalyzeRequestSchema = z.object({
+  llmModelOverrides: llmModelOverridesSchema.optional(),
+});
 
 export const subtitlesFetchRequestSchema = z.object({
   url: text,

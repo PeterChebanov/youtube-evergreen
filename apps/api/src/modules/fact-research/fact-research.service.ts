@@ -172,6 +172,7 @@ export class FactResearchService {
 
     const { data: q } = await this.llm.completeStructured({
       promptName: 'research_queries',
+      stageId: 'fact_research_queries',
       projectId: project.id,
       system: await this.composer.research('research_queries', project, useDatabase),
       user: { mode: 'global', topic: project.topic ?? project.title, language: project.language, riddle: plan.riddle.question, chapter: chapterBrief, feedback, knownFacts: existing.map((f) => f.text) },
@@ -183,6 +184,7 @@ export class FactResearchService {
 
     const { data } = await this.llm.completeStructured({
       promptName: 'fact_extract',
+      stageId: 'fact_extract',
       projectId: project.id,
       system: await this.composer.research('fact_extract', project, false),
       user: { chapter: chapterBrief, feedback, previousFacts: feedback ? existing.map((f) => ({ text: f.text, sourceUrl: f.sourceUrl })) : [], sources: sources.map((s, index) => ({ index, ...s })) },

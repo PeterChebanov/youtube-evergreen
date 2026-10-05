@@ -13,6 +13,7 @@ model Channel {
   id                String        @id @default(cuid())
   youtubeChannelId  String        @unique @map("youtube_channel_id")
   channelName       String        @map("channel_name")
+  youtubeHandle     String?       @map("youtube_handle")
   youtubeUrl        String        @map("youtube_url")
   description       String?
   subscribers       Int?
@@ -44,6 +45,9 @@ model ResearchJob {
   newVideos     Int       @default(0) @map("new_videos")
   pausedUntil   DateTime? @map("paused_until")
   error         String?
+  llmModelOverrides Json @default("{}") @map("llm_model_overrides")
+  publishedAfter  DateTime? @map("published_after") @db.Date
+  publishedBefore DateTime? @map("published_before") @db.Date
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
@@ -64,6 +68,7 @@ model Video {
   id               String             @id @default(cuid())
   channelId        String             @map("channel_id")
   channel          Channel            @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channelHandle    String?            @map("channel_handle")
   youtubeVideoId   String             @unique @map("youtube_video_id")
   title            String
   url              String

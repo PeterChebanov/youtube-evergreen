@@ -5,11 +5,25 @@
   </div>
 </div>
 
-<form class="urlbar" (submit)="$event.preventDefault(); runCheck()">
-  <input class="field" id="subs-url" type="text" placeholder="https://www.youtube.com/watch?v=VIDEO_ID" aria-label="Video URL"
-    [value]="url()" (input)="url.set($any($event.target).value); urlError.set(null)">
-  <button class="btn btn-primary" type="submit" [disabled]="busy() !== null">Check video</button>
-</form>
+<es-action-url-form
+  inputId="subs-url"
+  placeholder="https://www.youtube.com/watch?v=VIDEO_ID"
+  ariaLabel="Video URL"
+  actionLabel="Check video"
+  [value]="url()"
+  [submitDisabled]="busy() !== null"
+  (valueChange)="url.set($event); urlError.set(null)"
+  (submitForm)="runCheck()"
+>
+  <es-llm-vendor-select
+    label="Analysis LLM"
+    stageId="transcript_analysis"
+    [catalog]="catalog()"
+    [vendor]="transcriptVendor()"
+    [disabled]="busy() !== null"
+    (vendorChange)="transcriptVendor.set($event)"
+  />
+</es-action-url-form>
 @if (urlError()) { <div class="field-error" role="alert">{{ urlError() }}</div> }
 @if (error()) { <div class="banner">{{ error() }}</div> }
 

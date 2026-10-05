@@ -1,8 +1,28 @@
 import { Injectable } from '@nestjs/common';
-import { channelUrl, type ChannelDetail, type ChannelStatus, type ChannelSummary } from '@youtube-ai-tool/shared';
+import {
+  channelUrl,
+  formatChannelHandleLabel,
+  normalizeYoutubeHandle,
+  parseChannelRef,
+  type ChannelDetail,
+  type ChannelStatus,
+  type ChannelSummary,
+  type LlmStageId,
+  llmModelOverridesSchema,
+} from '@youtube-ai-tool/shared';
 import type { Channel, ResearchJob } from '@prisma/client';
-import { conflict, orNotFound } from '../../common/domain-error';
+import { ConfigService } from '@nestjs/config';
+import type { AppConfig } from '../../config/app.config';
+import { conflict, invalid, orNotFound } from '../../common/domain-error';
 import { PrismaService } from '../../prisma/prisma.service';
+import {
+  countLongFormInPeriod,
+  hasResearchPeriod,
+  parseResearchPeriod,
+  type ResearchPeriod,
+  type ResearchPeriodInput,
+  videoPeriodWhere,
+} from './research-period';
 import { median } from '../advice/metrics';
 import { LlmService } from '../llm/llm.service';
 import { QUEUES, QueueService } from '../queue/queue.service';
@@ -14,40 +34,76 @@ export type ResearchJobData = { researchJobId: string };
 
 @Injectable()
 export class ResearchService {
+  private readonly minDurationSec: number;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly youtube: YoutubeService,
     private readonly llm: LlmService,
     private readonly queue: QueueService,
-  ) {}
+    config: ConfigService<AppConfig, true>,
+  ) {
+    this.minDurationSec = config.get('youtube', { infer: true }).shortsMinDurationSec;
+  }
 
   /** Numbers for the confirm dialog before a research run (REQUIREMENTS 1.2). */
-  async preview(input: string) {
+  async preview(input: string, periodInput?: ResearchPeriodInput) {
     const yt = await this.youtube.resolveChannelUrl(input, { interactive: true });
+    const period = parseResearchPeriod(periodInput);
     const channel = await this.prisma.channel.findUnique({ where: { youtubeChannelId: yt.youtubeChannelId } });
-    const stored = channel ? await this.prisma.video.count({ where: { channelId: channel.id } }) : 0;
-    const analysed = channel ? await this.prisma.videoAnalysis.count({ where: { video: { channelId: channel.id } } }) : 0;
+    const periodScoped = hasResearchPeriod(period);
+    const inPeriodTotal = periodScoped
+      ? await countLongFormInPeriod(this.youtube, yt.uploadsPlaylistId, period, this.minDurationSec)
+      : yt.videoCount;
+    const stored = channel
+      ? await this.prisma.video.count({
+          where: periodScoped ? videoPeriodWhere(channel.id, period) : { channelId: channel.id },
+        })
+      : 0;
+    const analysed = channel
+      ? await this.prisma.videoAnalysis.count({
+          where: { video: periodScoped ? videoPeriodWhere(channel.id, period) : { channelId: channel.id } },
+        })
+      : 0;
+    const toAnalyze = Math.max(0, inPeriodTotal - analysed);
     return {
       youtubeChannelId: yt.youtubeChannelId,
       channelName: yt.title,
       videoCount: yt.videoCount,
+      inPeriodVideoCount: inPeriodTotal,
+      publishedAfter: periodInput?.publishedAfter ?? null,
+      publishedBefore: periodInput?.publishedBefore ?? null,
       inLibrary: !!channel,
       storedVideos: stored,
-      estimate: this.llm.estimateResearchAnalysisCost(Math.max(0, yt.videoCount - analysed)),
+      estimate: this.llm.estimateResearchAnalysisCost(toAnalyze),
     };
   }
 
-  async start(input: string): Promise<ChannelSummary> {
+  async start(
+    input: string,
+    llmModelOverrides?: Partial<Record<LlmStageId, string>>,
+    periodInput?: ResearchPeriodInput,
+  ): Promise<ChannelSummary> {
+    const handleHint = handleFromChannelInput(input);
     const yt = await this.youtube.resolveChannelUrl(input, { interactive: true });
-    const channel = await this.upsertChannel(yt);
-    return this.enqueue(channel, yt.videoCount);
+    const period = parseResearchPeriod(periodInput);
+    if (period.publishedAfter && period.publishedBefore && period.publishedAfter > period.publishedBefore) {
+      throw invalid('Start date must be on or before end date');
+    }
+    const channel = await this.upsertChannel(yt, handleHint);
+    const overrides = llmModelOverridesSchema.parse(llmModelOverrides ?? {});
+    const total = hasResearchPeriod(period)
+      ? await countLongFormInPeriod(this.youtube, yt.uploadsPlaylistId, period, this.minDurationSec)
+      : yt.videoCount;
+    return this.enqueue(channel, total, overrides, period);
   }
 
   /** Incremental re-run: new videos are added, known ones get a view snapshot (REQUIREMENTS 1.14). */
-  async rerun(channelId: string): Promise<ChannelSummary> {
+  async rerun(channelId: string, llmModelOverrides?: Partial<Record<LlmStageId, string>>): Promise<ChannelSummary> {
     const channel = orNotFound(await this.prisma.channel.findUnique({ where: { id: channelId } }), 'Channel');
     const yt = await this.youtube.channelById(channel.youtubeChannelId, { interactive: true });
-    return this.enqueue(await this.upsertChannel(yt), yt.videoCount);
+    const overrides = llmModelOverridesSchema.parse(llmModelOverrides ?? {});
+    return this.enqueue(await this.upsertChannel(yt, null), yt.videoCount, overrides);
   }
 
   /** "Refresh views" for every fully researched channel. */
@@ -137,14 +193,28 @@ export class ResearchService {
     });
   }
 
-  private async upsertChannel(yt: YoutubeChannel): Promise<Channel> {
+  private async upsertChannel(yt: YoutubeChannel, handleHint: string | null): Promise<Channel> {
     const existing = await this.prisma.channel.findUnique({ where: { youtubeChannelId: yt.youtubeChannelId } });
     if (existing) await this.assertIdle(existing.id);
-    return this.prisma.channel.upsert({
+    const handle = normalizeYoutubeHandle(handleHint);
+    const channel = await this.prisma.channel.upsert({
       where: { youtubeChannelId: yt.youtubeChannelId },
-      update: { ...this.channelFields(yt), researchStatus: 'collecting', analysisError: null },
-      create: { ...this.channelFields(yt), researchStatus: 'collecting' },
+      update: {
+        ...this.channelFields(yt),
+        ...(handle ? { youtubeHandle: handle } : {}),
+        researchStatus: 'collecting',
+        analysisError: null,
+      },
+      create: { ...this.channelFields(yt), ...(handle ? { youtubeHandle: handle } : {}), researchStatus: 'collecting' },
     });
+    if (handle) await this.syncVideoChannelHandles(channel.id, handle);
+    return channel;
+  }
+
+  private async syncVideoChannelHandles(channelId: string, handle: string) {
+    const label = formatChannelHandleLabel(handle);
+    if (!label) return;
+    await this.prisma.video.updateMany({ where: { channelId }, data: { channelHandle: label } });
   }
 
   private channelFields(yt: YoutubeChannel) {
@@ -158,7 +228,12 @@ export class ResearchService {
     };
   }
 
-  private async enqueue(channel: Channel, total: number): Promise<ChannelSummary> {
+  private async enqueue(
+    channel: Channel,
+    total: number,
+    llmModelOverrides: Partial<Record<LlmStageId, string>> = {},
+    period: ResearchPeriod = { publishedAfter: null, publishedBefore: null },
+  ): Promise<ChannelSummary> {
     const hasVideos = (await this.prisma.video.count({ where: { channelId: channel.id } })) > 0;
     const job = await this.prisma.researchJob.create({
       data: {
@@ -166,6 +241,9 @@ export class ResearchService {
         type: hasVideos ? 'incremental' : 'initial',
         total,
         estimatedCost: this.llm.estimateResearchAnalysisCost(total).estimatedUsd,
+        llmModelOverrides,
+        publishedAfter: period.publishedAfter,
+        publishedBefore: period.publishedBefore,
       },
     });
     await this.queue.add<ResearchJobData>(QUEUES.research, { researchJobId: job.id });
@@ -196,6 +274,12 @@ export class ResearchService {
       job: job ? jobView(job) : null,
     };
   }
+}
+
+function handleFromChannelInput(input: string): string | null {
+  const ref = parseChannelRef(input);
+  if (ref?.kind === 'handle') return ref.value;
+  return null;
 }
 
 const jobView = (j: ResearchJob) => ({

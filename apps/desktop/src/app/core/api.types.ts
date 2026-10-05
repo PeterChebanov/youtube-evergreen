@@ -21,14 +21,25 @@ export type {
   SearchOption,
   LlmDefaults,
   LlmCatalog,
-  ProjectLlmStageId,
+  LlmStageId,
+  LlmVendorId,
   SearchProviderId,
 } from '@youtube-ai-tool/shared';
+
+export type ResearchRequestBody = {
+  channelUrl: string;
+  llmModelOverrides?: Record<string, string>;
+  publishedAfter?: string;
+  publishedBefore?: string;
+};
 
 export type ResearchPreview = {
   youtubeChannelId: string;
   channelName: string;
   videoCount: number;
+  inPeriodVideoCount?: number;
+  publishedAfter?: string | null;
+  publishedBefore?: string | null;
   inLibrary: boolean;
   storedVideos: number;
   estimate: { videoCount: number; estimatedInputTokens: number; estimatedOutputTokens: number; estimatedUsd: number };

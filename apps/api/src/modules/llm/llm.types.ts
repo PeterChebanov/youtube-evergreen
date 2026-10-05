@@ -1,3 +1,4 @@
+import type { LlmStageId } from '@youtube-ai-tool/shared';
 import type { z } from 'zod';
 import type { PromptName } from './prompt-names';
 
@@ -51,6 +52,10 @@ export type StructuredRequest<S extends z.ZodTypeAny> = {
   schema: S;
   tools?: ToolSet;
   projectId?: string | null;
+  /** Explicit stage for overrides (required for `research_queries` shallow vs fact). */
+  stageId?: LlmStageId;
+  /** One-off vendor id or `provider:model` for this call. */
+  modelSelection?: string;
 };
 
 export type StructuredResult<T> = { data: T; dbToolsUsed: string[] };

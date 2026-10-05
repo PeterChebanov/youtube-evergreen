@@ -1,7 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { channelUrl, extractYoutubeVideoId } from '@youtube-ai-tool/shared';
 import { Api, errorText } from '../../core/api.service';
-import type { SubtitleCheck } from '../../core/api.types';
+import type { LlmCatalog, SubtitleCheck } from '../../core/api.types';
+import { channelResearchOverrides, defaultVendorForStage, overridesForStage } from '../../core/llm-preferences';
+import { ActionUrlForm } from '../../ui/action-url-form';
+import { LlmVendorSelect } from '../../ui/llm-vendor-select';
 import { clock } from '../../core/format';
 import { Nav, ProjectStore } from '../../core/stores';
 import { channelLine, scenarioView, toneRows } from './subtitles.view';
@@ -11,11 +14,19 @@ const MAX_TONE_REFERENCES = 3;
 @Component({
   selector: 'section[esSubtitles]',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ActionUrlForm, LlmVendorSelect],
   host: { class: 'screen', id: 'screen-subtitles', 'data-screen': 'subtitles' },
   templateUrl: './subtitles.screen.html',
 })
 export class SubtitlesScreen {
   private readonly api = inject(Api);
+
+  constructor() {
+    void this.api.llmCatalog().then((c) => {
+      this.catalog.set(c);
+      this.transcriptVendor.set(defaultVendorForStage('transcript_analysis', c));
+    });
+  }
   private readonly nav = inject(Nav);
   readonly projects = inject(ProjectStore);
 
@@ -26,6 +37,8 @@ export class SubtitlesScreen {
   readonly busy = signal<'check' | 'fetch' | 'analyze' | null>(null);
   readonly notice = signal<string | null>(null);
   readonly error = signal<string | null>(null);
+  readonly catalog = signal<LlmCatalog | null>(null);
+  readonly transcriptVendor = signal<string | null>(null);
 
   readonly view = computed(() => (this.check() ? scenarioView(this.check()!) : null));
   readonly channel = computed(() => (this.check() ? channelLine(this.check()!) : ''));
@@ -61,7 +74,7 @@ export class SubtitlesScreen {
       if (result.outcome === 'confirmation_required') return this.notice.set(result.confirmation);
       if (result.outcome === 'unavailable') return this.notice.set('YouTube has no subtitles for this video. Nothing was analyzed.');
       if (result.check.videoId) {
-        await this.api.analyzeTranscript(result.check.videoId);
+        await this.api.analyzeTranscript(result.check.videoId, overridesForStage('transcript_analysis', this.transcriptVendor()));
         this.check.set(await this.api.checkSubtitles(this.checkedUrl()));
       }
       this.notice.set('Subtitles saved and analyzed.');
@@ -72,7 +85,7 @@ export class SubtitlesScreen {
     const id = this.check()?.videoId;
     if (!id) return;
     await this.act('analyze', async () => {
-      await this.api.analyzeTranscript(id);
+      await this.api.analyzeTranscript(id, overridesForStage('transcript_analysis', this.transcriptVendor()));
       this.check.set(await this.api.checkSubtitles(this.checkedUrl()));
     });
   }
@@ -81,7 +94,10 @@ export class SubtitlesScreen {
     const c = this.check();
     if (!c) return;
     await this.act('fetch', async () => {
-      await this.api.startResearch(channelUrl(c.youtubeChannelId));
+      await this.api.startResearch({
+        channelUrl: channelUrl(c.youtubeChannelId),
+        llmModelOverrides: channelResearchOverrides(this.transcriptVendor()),
+      });
       this.nav.go('research');
     });
   }

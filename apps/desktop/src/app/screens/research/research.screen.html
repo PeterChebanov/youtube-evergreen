@@ -3,14 +3,46 @@
     <h1>Research</h1>
     <p class="sub">Add a reference channel. Code collects every long-form video, then AI analyzes each one cheaply.</p>
   </div>
-  <div class="actions"><button class="btn" type="button" (click)="refreshViews()">Refresh views</button></div>
 </div>
 
-<form class="urlbar" (submit)="$event.preventDefault(); addChannel()">
-  <input class="field" id="research-url" type="text" placeholder="https://www.youtube.com/@channel-handle" aria-label="Channel URL"
-    [value]="url()" (input)="url.set($any($event.target).value); urlError.set(null)">
-  <button class="btn btn-primary" type="submit" [disabled]="busy()">Add channel</button>
-</form>
+<div class="action-url-form">
+  <div class="action-url-row">
+    <input
+      class="field action-url-input"
+      id="research-url"
+      type="text"
+      placeholder="https://www.youtube.com/@channel-handle"
+      aria-label="Channel URL"
+      [value]="url()"
+      [disabled]="busy()"
+      (input)="url.set($any($event.target).value); urlError.set(null)"
+    />
+    <button class="btn action-url-btn" type="button" [disabled]="busy()" (click)="researchAll()">Research all period</button>
+  </div>
+  <div class="action-url-row action-url-period">
+    <label class="date-field">
+      <span class="mute">From</span>
+      <input class="field" type="date" aria-label="Published on or after" [value]="periodFrom() ?? ''" [disabled]="busy()"
+        (change)="periodFrom.set($any($event.target).value || null)" />
+    </label>
+    <label class="date-field">
+      <span class="mute">To</span>
+      <input class="field" type="date" aria-label="Published on or before" [value]="periodTo()" [disabled]="busy()"
+        (change)="periodTo.set($any($event.target).value)" />
+    </label>
+    <button class="btn btn-primary action-url-btn" type="button" [disabled]="busy()" (click)="researchPeriod()">Research period</button>
+  </div>
+  <div class="action-url-extra">
+    <es-llm-vendor-select
+      label="Analysis LLM"
+      stageId="video_basic"
+      [catalog]="catalog()"
+      [vendor]="analysisVendor()"
+      [disabled]="busy()"
+      (vendorChange)="analysisVendor.set($event)"
+    />
+  </div>
+</div>
 @if (urlError()) {
   <div class="field-error" role="alert">{{ urlError() }}</div>
 }

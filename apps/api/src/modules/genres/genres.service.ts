@@ -109,6 +109,7 @@ export class GenresService implements OnModuleInit {
 
     const { data } = await this.llm.completeStructured({
       promptName: 'genre_practices',
+      stageId: 'genre_practices',
       system: await this.composer.single('genre_practices'),
       user: { genre: genre.name, focus: genre.focus, topVideos: samples, topAuthors: authors },
       schema: genrePracticesSchema,

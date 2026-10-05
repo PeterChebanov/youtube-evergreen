@@ -1,10 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { estimateBasicAnalysisCost } from '@youtube-ai-tool/shared';
+import { estimateBasicAnalysisCost, LLM_STAGE_IDS, type LlmStageId } from '@youtube-ai-tool/shared';
 import type { z } from 'zod';
 import { errorMessage, unavailable } from '../../common/domain-error';
 import type { AppConfig } from '../../config/app.config';
 import { PrismaService } from '../../prisma/prisma.service';
+import { LlmContextService } from './llm-context.service';
 import {
   LLM_PROVIDER,
   LlmMessage,
@@ -12,35 +13,21 @@ import {
   StructuredRequest,
   StructuredResult,
 } from './llm.types';
-import {
-  PROJECT_LLM_STAGE_IDS,
-  RESEARCH_LLM_PROMPTS,
-  WRITER_LLM_PROMPTS,
-  formatModelRef,
-  type ProjectLlmStageId,
-} from '@youtube-ai-tool/shared';
 import type { PromptName } from './prompt-names';
+import { listConfiguredVendors, resolveEmbeddingModel, resolveModelRef } from './resolve-model';
 
-const RESEARCH = new Set<string>(RESEARCH_LLM_PROMPTS);
-const WRITER = new Set<string>(WRITER_LLM_PROMPTS);
-const STAGES = new Set<string>(PROJECT_LLM_STAGE_IDS);
+const MAX_TOOL_ROUNDS = 5;
+const MAX_REPAIRS = 2;
 
-function isStage(name: PromptName): name is ProjectLlmStageId {
-  return STAGES.has(name);
-}
-
-function parseOverrides(raw: unknown): Partial<Record<ProjectLlmStageId, string>> {
+function parseOverrides(raw: unknown): Partial<Record<LlmStageId, string>> {
   if (!raw || typeof raw !== 'object') return {};
-  const out: Partial<Record<ProjectLlmStageId, string>> = {};
-  for (const id of PROJECT_LLM_STAGE_IDS) {
+  const out: Partial<Record<LlmStageId, string>> = {};
+  for (const id of LLM_STAGE_IDS) {
     const v = (raw as Record<string, unknown>)[id];
     if (typeof v === 'string' && v.trim()) out[id] = v.trim();
   }
   return out;
 }
-
-const MAX_TOOL_ROUNDS = 5;
-const MAX_REPAIRS = 2;
 
 function parseJson(content: string | null): { ok: true; value: unknown } | { ok: false; error: string } {
   if (!content) return { ok: false, error: 'empty reply' };
@@ -59,18 +46,20 @@ export class LlmService {
   constructor(
     @Inject(LLM_PROVIDER) private readonly provider: LlmProvider,
     private readonly prisma: PrismaService,
+    private readonly llmContext: LlmContextService,
     config: ConfigService<AppConfig, true>,
   ) {
     this.llm = config.get('llm', { infer: true });
   }
 
-  /**
-   * Runs one prompt to a validated JSON result. Tool calls (read-only DB access)
-   * are executed in a loop; invalid output is sent back to the model with the
-   * validation error. Every attempt is logged as a single LlmCall row.
-   */
   async completeStructured<S extends z.ZodTypeAny>(req: StructuredRequest<S>): Promise<StructuredResult<z.output<S>>> {
-    const model = await this.resolveModel(req.promptName, req.projectId);
+    const projectOverrides = req.projectId ? await this.loadProjectOverrides(req.projectId) : undefined;
+    const model = resolveModelRef(this.llm, req.promptName, {
+      stageId: req.stageId,
+      modelSelection: req.modelSelection,
+      runOverrides: this.llmContext.runOverrides(),
+      projectOverrides,
+    });
     const user = typeof req.user === 'string' ? req.user : JSON.stringify(req.user, null, 1);
     const messages: LlmMessage[] = [
       { role: 'system', content: `${req.system}\n\nReply with a single JSON object only.` },
@@ -131,7 +120,7 @@ export class LlmService {
 
   async embed(texts: string[], projectId: string | null = null): Promise<number[][]> {
     if (!texts.length) return [];
-    const model = this.llm.embeddingModel;
+    const model = resolveEmbeddingModel(this.llm);
     const res = await this.provider.embed(model, texts.map((t) => t.slice(0, 8000)));
     await this.log('embedding', model, res.inputTokens, 0, projectId, [], true);
     return res.vectors;
@@ -157,66 +146,32 @@ export class LlmService {
     return Math.round(usd * 10000) / 10000;
   }
 
-  defaultModelFor(promptName: PromptName): string {
+  defaultModelFor(stageId: LlmStageId): string {
+    return this.llm.stageDefaults[stageId];
+  }
+
+  defaultModelForPrompt(promptName: PromptName): string {
     return this.llm.models[promptName];
   }
 
   researchDefaultModel(): string {
-    return this.llm.models.research_queries;
+    return this.llm.stageDefaults.plan_shallow_queries;
   }
 
   writerDefaultModel(): string {
-    return this.llm.models.writer;
+    return this.llm.stageDefaults.writer;
   }
 
-  configuredProviders() {
-    const p = this.llm.providers;
-    return [
-      { id: 'openai' as const, label: 'OpenAI', configured: Boolean(p.openai.apiKey) },
-      { id: 'anthropic' as const, label: 'Anthropic', configured: Boolean(p.anthropic.apiKey) },
-      { id: 'gemini' as const, label: 'Gemini', configured: Boolean(p.gemini.apiKey) },
-      { id: 'xai' as const, label: 'xAI (Grok)', configured: Boolean(p.xai.apiKey) },
-      { id: 'perplexity' as const, label: 'Perplexity (Sonar)', configured: Boolean(p.perplexity.apiKey) },
-    ];
+  configuredVendors() {
+    return listConfiguredVendors(this.llm);
   }
 
-  modelPresets(): string[] {
-    const p = this.llm.providers;
-    const out: string[] = [];
-    const push = (provider: Parameters<typeof formatModelRef>[0], model: string) => {
-      if (model.trim()) out.push(formatModelRef(provider, model.trim()));
-    };
-    if (p.openai.apiKey) {
-      push('openai', 'gpt-4o');
-      push('openai', 'gpt-4o-mini');
-    }
-    if (p.anthropic.apiKey) {
-      push('anthropic', p.anthropic.opusModel);
-      push('anthropic', p.anthropic.defaultModel);
-    }
-    if (p.gemini.apiKey) push('gemini', this.llm.geminiDefaultModel);
-    if (p.xai.apiKey) push('xai', this.llm.xaiDefaultModel);
-    if (p.perplexity.apiKey) {
-      push('perplexity', p.perplexity.defaultModel);
-      push('perplexity', 'sonar');
-    }
-    for (const id of PROJECT_LLM_STAGE_IDS) out.push(this.llm.models[id]);
-    return [...new Set(out)];
-  }
-
-  private async resolveModel(promptName: PromptName, projectId?: string | null): Promise<string> {
-    const fallback = this.llm.models[promptName];
-    if (!projectId) return fallback;
+  private async loadProjectOverrides(projectId: string): Promise<Partial<Record<LlmStageId, string>>> {
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
-      select: { llmResearchModel: true, llmWriterModel: true, llmModelOverrides: true },
+      select: { llmModelOverrides: true },
     });
-    if (!project) return fallback;
-    const overrides = parseOverrides(project.llmModelOverrides);
-    if (isStage(promptName) && overrides[promptName]) return overrides[promptName]!;
-    if (project.llmResearchModel && RESEARCH.has(promptName)) return project.llmResearchModel;
-    if (project.llmWriterModel && WRITER.has(promptName)) return project.llmWriterModel;
-    return fallback;
+    return parseOverrides(project?.llmModelOverrides);
   }
 
   private async log(

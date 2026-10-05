@@ -88,8 +88,31 @@
 }
 .field::placeholder { color: var(--mute); }
 textarea.field { resize: none; height: 72px; }
-.urlbar { display: flex; gap: var(--s2); }
+.urlbar { display: flex; gap: var(--s2); align-items: center; flex-wrap: wrap; }
 .urlbar .field { flex: 1 1 auto; }
+
+/* Shared Research / Subtitles: URL + button, then optional LLM row */
+.action-url-form { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s2); width: 100%; max-width: 100%; }
+.action-url-row {
+  display: inline-flex; flex-wrap: nowrap; align-items: stretch; gap: var(--s2);
+  width: fit-content; max-width: 100%;
+}
+.action-url-input {
+  width: min(360px, calc(100vw - 12rem));
+  min-width: 200px;
+  flex: 0 1 auto;
+}
+.app .action-url-btn {
+  flex: 0 0 auto;
+  flex-shrink: 0;
+  min-width: max-content;
+  white-space: nowrap;
+}
+.action-url-extra { max-width: min(100%, 560px); }
+.action-url-extra:empty { display: none; }
+.action-url-period { flex-wrap: wrap; max-width: 100%; }
+.date-field { display: flex; flex-direction: column; gap: 2px; font-size: var(--t-xs); }
+.date-field .field { width: 11rem; min-width: 0; }
 .refine { display: flex; gap: var(--s2); }
 .refine .field { flex: 1 1 auto; }
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--s2) var(--s3); flex-wrap: wrap; }

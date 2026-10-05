@@ -1,12 +1,21 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import type { Prisma, ResearchJob } from '@prisma/client';
+import { LLM_STAGE_IDS, type LlmStageId } from '@youtube-ai-tool/shared';
 import { errorMessage } from '../../common/domain-error';
+import { LlmContextService } from '../llm/llm-context.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ANALYSIS_BATCH_SIZE, AnalysisService } from '../analysis/analysis.service';
 import { GenresService } from '../genres/genres.service';
 import { QUEUES, QueueService } from '../queue/queue.service';
 import { QuotaExceededError } from '../youtube/quota';
 import { YoutubeService } from '../youtube/youtube.service';
+import {
+  filterVideosForPeriod,
+  pageEntirelyBeforePeriod,
+  periodFromJob,
+  videoPeriodWhere,
+  hasResearchPeriod,
+} from './research-period';
 import type { ResearchJobData } from './research.service';
 import { VideoIngestService } from './video-ingest.service';
 
@@ -29,6 +38,7 @@ export class ResearchProcessor implements OnModuleInit {
     private readonly ingest: VideoIngestService,
     private readonly analysis: AnalysisService,
     private readonly genres: GenresService,
+    private readonly llmContext: LlmContextService,
   ) {}
 
   onModuleInit() {
@@ -38,30 +48,35 @@ export class ResearchProcessor implements OnModuleInit {
   async process(researchJobId: string): Promise<void> {
     let job = await this.prisma.researchJob.findUnique({ where: { id: researchJobId } });
     if (!job || job.status === 'done') return;
-    job = await this.update(job.id, { status: 'running', error: null, pausedUntil: null });
+    let current = await this.update(job.id, { status: 'running', error: null, pausedUntil: null });
 
+    const runOverrides = parseJobOverrides(current.llmModelOverrides);
     try {
-      if (job.stage === 'collect') {
-        job = await this.collect(job);
-        job = await this.update(job.id, { stage: 'analyze' });
-        await this.setChannel(job.channelId, { researchStatus: 'analyzing' });
-      }
-      if (job.stage === 'analyze') {
-        await this.analyze(job);
-        job = await this.update(job.id, { stage: 'author' });
-      }
-      if (job.stage === 'author') {
-        const styles = await this.prisma.authorStyle.count({ where: { channelId: job.channelId } });
-        if (job.newVideos > 0 || styles === 0) await this.analysis.analyzeAuthorStyle(job.channelId);
-      }
-      await this.update(job.id, { stage: 'done', status: 'done', progress: 100 });
-      await this.setChannel(job.channelId, { researchStatus: 'ready', analysisError: null, lastResearchedAt: new Date() });
+      await this.llmContext.withRunOverrides(runOverrides, async () => {
+        if (current.stage === 'collect') {
+          current = await this.collect(current);
+          current = await this.update(current.id, { stage: 'analyze' });
+          await this.setChannel(current.channelId, { researchStatus: 'analyzing' });
+        }
+        if (current.stage === 'analyze') {
+          await this.analyze(current);
+          current = await this.update(current.id, { stage: 'author' });
+        }
+        if (current.stage === 'author') {
+          const styles = await this.prisma.authorStyle.count({ where: { channelId: current.channelId } });
+          if (current.newVideos > 0 || styles === 0) await this.analysis.analyzeAuthorStyle(current.channelId);
+        }
+        await this.update(current.id, { stage: 'done', status: 'done', progress: 100 });
+        await this.setChannel(current.channelId, { researchStatus: 'ready', analysisError: null, lastResearchedAt: new Date() });
+      });
     } catch (e) {
-      await this.handleFailure(job.id, e);
+      await this.handleFailure(current.id, e);
       return;
     }
 
-    const result = await this.genres.recomputeAll().catch((e) => ({ updated: 0, failed: [errorMessage(e)] }));
+    const result = await this.llmContext.withRunOverrides(runOverrides, () =>
+      this.genres.recomputeAll().catch((e) => ({ updated: 0, failed: [errorMessage(e)] })),
+    );
     if (result.failed.length) this.logger.warn(`Genre recompute incomplete: ${result.failed.join(', ')}`);
   }
 
@@ -69,13 +84,19 @@ export class ResearchProcessor implements OnModuleInit {
     const channel = await this.prisma.channel.findUniqueOrThrow({ where: { id: job.channelId } });
     if (!channel.uploadsPlaylistId) throw new Error('Channel has no uploads playlist');
     let { cursor, processed, newVideos } = job;
+    const period = periodFromJob(job);
     let first = true;
     while (first || cursor) {
       first = false;
       const page = await this.youtube.listUploads(channel.uploadsPlaylistId, cursor);
-      const videos = await this.youtube.getVideos(page.videoIds);
+      const fetched = await this.youtube.getVideos(page.videoIds);
+      const videos = filterVideosForPeriod(fetched, period);
       const synced = await this.ingest.syncPage(channel.id, videos);
       processed += page.videoIds.length;
+      if (hasResearchPeriod(period) && pageEntirelyBeforePeriod(fetched, period)) {
+        cursor = null;
+        break;
+      }
       newVideos += synced.created;
       cursor = page.nextPageToken;
       const progress = job.total ? Math.min(COLLECT_SHARE, Math.round((COLLECT_SHARE * processed) / job.total)) : 0;
@@ -85,7 +106,10 @@ export class ResearchProcessor implements OnModuleInit {
   }
 
   private async analyze(job: ResearchJob): Promise<void> {
-    const where = { channelId: job.channelId, analysis: null };
+    const period = periodFromJob(job);
+    const where = hasResearchPeriod(period)
+      ? { ...videoPeriodWhere(job.channelId, period), analysis: null }
+      : { channelId: job.channelId, analysis: null };
     for (;;) {
       const pending = await this.prisma.video.findMany({ where, select: { id: true }, take: ANALYSIS_BATCH_SIZE, orderBy: { publishedAt: 'desc' } });
       if (!pending.length) return;
@@ -118,4 +142,14 @@ export class ResearchProcessor implements OnModuleInit {
   private setChannel(id: string, data: { researchStatus: string; analysisError?: string | null; lastResearchedAt?: Date }) {
     return this.prisma.channel.update({ where: { id }, data });
   }
+}
+
+function parseJobOverrides(raw: unknown): Partial<Record<LlmStageId, string>> {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: Partial<Record<LlmStageId, string>> = {};
+  for (const id of LLM_STAGE_IDS) {
+    const v = (raw as Record<string, unknown>)[id];
+    if (typeof v === 'string' && v.trim()) out[id] = v.trim();
+  }
+  return out;
 }

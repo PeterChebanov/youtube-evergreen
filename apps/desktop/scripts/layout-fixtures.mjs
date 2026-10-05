@@ -22,9 +22,7 @@ export const project = {
   useDatabase: false,
   topic: 'Small towns',
   searchProviders: ['tavily', 'brave'],
-  llmResearchModel: null,
   llmModelOverrides: {},
-  llmWriterModel: null,
 };
 
 const job = (status, stage, progress, extra = {}) => ({ id: `j-${status}`, status, stage, progress, error: null, pausedUntil: null, ...extra });
@@ -150,6 +148,33 @@ const style = { id: 's1', version: 3, voice: 'Calm and precise', themes: 'Hidden
 export function respond(method, pathname, searchParams) {
   const m = (re) => pathname.match(re);
   if (pathname === '/ops/status') return [200, { api: 'ok', queues: { running: 1, queued: 1 }, youtubeQuota: { used: 6420, limit: 10000 }, llmSpendTodayUsd: 0.84, videoCount: 14382, styleUpdateSuggested: true }];
+  if (pathname === '/ops/search-options') {
+    return [200, [
+      { id: 'tavily', label: 'Tavily', configured: true },
+      { id: 'brave', label: 'Brave', configured: true },
+      { id: 'perplexity_search', label: 'Perplexity Search', configured: false },
+      { id: 'reddit', label: 'Reddit', configured: false },
+    ]];
+  }
+  if (pathname === '/ops/llm-catalog') {
+    const vendors = [
+      { id: 'openai', label: 'GPT', modelRef: 'openai:gpt-4.1-mini', configured: true },
+      { id: 'anthropic', label: 'Claude', modelRef: null, configured: false },
+      { id: 'gemini', label: 'Gemini', modelRef: null, configured: false },
+      { id: 'xai', label: 'Grok', modelRef: null, configured: false },
+      { id: 'perplexity', label: 'Perplexity', modelRef: null, configured: false },
+    ];
+    const stages = [
+      { id: 'planning', label: 'Plan', hint: 'Outline', projectScoped: true, defaultVendor: 'openai', defaultModel: 'openai:gpt-4.1-mini' },
+      { id: 'plan_shallow_queries', label: 'Plan shallow search', hint: 'Queries', projectScoped: true, defaultVendor: 'openai', defaultModel: 'openai:gpt-4.1-mini' },
+      { id: 'fact_research_queries', label: 'Fact search queries', hint: 'Queries', projectScoped: true, defaultVendor: 'openai', defaultModel: 'openai:gpt-4.1-mini' },
+      { id: 'fact_extract', label: 'Fact extraction', hint: 'Facts', projectScoped: true, defaultVendor: 'openai', defaultModel: 'openai:gpt-4.1-mini' },
+      { id: 'writer', label: 'Writer chapter', hint: 'Draft', projectScoped: true, defaultVendor: 'openai', defaultModel: 'openai:gpt-4.1-mini' },
+      { id: 'writer_refine', label: 'Writer refine', hint: 'Refine', projectScoped: true, defaultVendor: 'openai', defaultModel: 'openai:gpt-4.1-mini' },
+      { id: 'chapter_summary', label: 'Chapter summary', hint: 'Summary', projectScoped: true, defaultVendor: 'openai', defaultModel: 'openai:gpt-4.1-mini' },
+    ];
+    return [200, { vendors, stages }];
+  }
   if (pathname === '/projects' && method === 'GET') return [200, [project, { ...project, id: 'p2', title: 'The quiet cost of free delivery', status: 'planning' }]];
   if (m(/^\/projects\/p1$/)) return [200, project];
   if (pathname === '/library/channels') return [200, channels];

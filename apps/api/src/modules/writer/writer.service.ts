@@ -79,6 +79,7 @@ export class WriterService {
     const current = this.requireDraft(await this.latestVersions(projectId), order);
     const { data } = await this.llm.completeStructured({
       promptName: 'chapter_summary',
+      stageId: 'chapter_summary',
       projectId,
       system: await this.composer.single('chapter_summary'),
       user: { language: project.language, chapterOrder: order, text: current.text },
@@ -138,6 +139,7 @@ export class WriterService {
     const useDatabase = await this.dbTools.shouldUse(refine?.feedback ?? '', project.useDatabase);
     const { data } = await this.llm.completeStructured({
       promptName: refine ? 'writer_refine' : 'writer',
+      stageId: refine ? 'writer_refine' : 'writer',
       projectId: project.id,
       system: await this.composer.writer(project, { refine: !!refine, useDatabase }),
       user: {

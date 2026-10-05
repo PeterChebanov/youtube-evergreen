@@ -28,7 +28,7 @@
 
 <section class="panel panel-flush">
   <div #viewport class="table-scroll table-viewport" (scroll)="onScroll(viewport)">
-    <table class="tbl tbl-min tbl-virtual" [style.min-width.px]="width()">
+    <table class="tbl tbl-min tbl-virtual tbl-db" [style.min-width.px]="width()">
       <colgroup>
         @for (v of views(); track v.name) {
           @if (v.width) { <col [style.width.px]="v.width"> } @else { <col> }
@@ -36,9 +36,15 @@
       </colgroup>
       <thead>
         <tr>
-          @for (v of views(); track v.name) {
-            <th class="is-sortable" [class.r]="v.right" tabindex="0" [title]="v.name" [attr.aria-sort]="sort()?.column === v.name ? (sort()!.dir === 'asc' ? 'ascending' : 'descending') : null"
-              (click)="toggleSort(v.name)" (keydown.enter)="toggleSort(v.name)">{{ v.name }}{{ sortMark(v.name) }}</th>
+          @for (v of views(); track v.name; let i = $index) {
+            <th class="is-sortable" [class.r]="v.right" [class.is-dragging]="dragCol() === i" tabindex="0" draggable="true"
+              [title]="'Drag to reorder · drag right edge to resize · ' + v.name"
+              [attr.aria-sort]="sort()?.column === v.name ? (sort()!.dir === 'asc' ? 'ascending' : 'descending') : null"
+              (dragstart)="dragStart(i, $event)" (dragover)="dragOver($event)" (drop)="dropColumn(i, $event)" (dragend)="dragEnd()"
+              (click)="toggleSort(v.name)" (keydown.enter)="toggleSort(v.name)">
+              <span class="th-label">{{ v.name }}{{ sortMark(v.name) }}</span>
+              <span class="col-resize" aria-hidden="true" (mousedown)="startResize(v.name, $event)"></span>
+            </th>
           }
         </tr>
       </thead>
@@ -66,6 +72,6 @@
 </section>
 
 <div class="row-between mute">
-  <span>{{ notice() ?? (total() ? 'Rows ' + (range().start + 1).toLocaleString('en-US') + '–' + range().end.toLocaleString('en-US') + ' are on screen. The list is virtualized and loads pages as you scroll.' : '') }}</span>
+  <span>{{ notice() ?? (total() ? 'Drag column headers to reorder; drag the header edge to resize. Rows ' + (range().start + 1).toLocaleString('en-US') + '–' + range().end.toLocaleString('en-US') + ' on screen (virtualized).' : '') }}</span>
   <span class="mono">{{ selectedRef() }}</span>
 </div>

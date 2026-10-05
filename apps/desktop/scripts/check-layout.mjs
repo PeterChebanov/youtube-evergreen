@@ -96,6 +96,19 @@ for (const theme of THEMES) {
         console.log(`FAIL ${theme} ${w} ${s}`);
         issues.forEach((i) => console.log('   ' + i));
       }
+      if (s === 'research' || s === 'subtitles') {
+        const label = s === 'research' ? 'Research all period' : 'Check video';
+        const btn = page.getByRole('button', { name: label, exact: true });
+        if (await btn.count()) {
+          const clipped = await btn.evaluate(
+            (el) => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1,
+          );
+          if (clipped) {
+            failures++;
+            console.log(`FAIL ${theme} ${w} ${s}: primary button "${label}" text is clipped`);
+          }
+        }
+      }
       if (theme === 'light' || w === 1100) await page.screenshot({ path: join(SHOTS, `${s}-${theme}-${w}.png`) });
     }
     await page.close();

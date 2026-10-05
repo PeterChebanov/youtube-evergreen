@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { channelStyleDraftSchema, type ChannelStyleRequest } from '@youtube-ai-tool/shared';
+import { channelStyleDraftSchema, type ChannelStyleRequest, type LlmStageId } from '@youtube-ai-tool/shared';
+import { LlmContextService } from '../llm/llm-context.service';
 import { conflict } from '../../common/domain-error';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LlmService } from '../llm/llm.service';
@@ -11,6 +12,7 @@ export class StyleService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly llm: LlmService,
+    private readonly llmContext: LlmContextService,
     private readonly composer: PromptComposer,
   ) {}
 
@@ -28,22 +30,25 @@ export class StyleService {
   }
 
   /** Synthesises a voice from the strongest techniques of several authors, never a copy of one. */
-  async draftFromAuthors() {
+  async draftFromAuthors(llmModelOverrides?: Partial<Record<LlmStageId, string>>) {
     const styles = await this.prisma.authorStyle.findMany({
       include: { channel: { select: { channelName: true } } },
       orderBy: [{ channelId: 'asc' }, { order: 'asc' }],
     });
     if (!styles.length) throw conflict('Research at least one channel before drafting the channel style');
     const current = await this.latest();
-    const { data } = await this.llm.completeStructured({
-      promptName: 'channel_style',
-      system: await this.composer.single('channel_style'),
-      user: {
-        currentStyle: current && { voice: current.voice, themes: current.themes, techniques: current.techniques, retentionRules: current.retentionRules },
-        authorStyles: styles.map((s) => ({ id: s.id, channel: s.channel.channelName, technique: s.technique, description: s.description })),
-      },
-      schema: channelStyleDraftSchema,
-    });
+    const { data } = await this.llmContext.withRunOverrides(llmModelOverrides ?? {}, async () =>
+      this.llm.completeStructured({
+        promptName: 'channel_style',
+        stageId: 'channel_style',
+        system: await this.composer.single('channel_style'),
+        user: {
+          currentStyle: current && { voice: current.voice, themes: current.themes, techniques: current.techniques, retentionRules: current.retentionRules },
+          authorStyles: styles.map((s) => ({ id: s.id, channel: s.channel.channelName, technique: s.technique, description: s.description })),
+        },
+        schema: channelStyleDraftSchema,
+      }),
+    );
     return this.save({
       voice: data.voice,
       themes: data.themes,

@@ -14,6 +14,7 @@ import { EmbeddingRepository } from '../../prisma/embedding.repository';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StatsRepository } from '../../prisma/stats.repository';
 import { AnalysisService } from '../analysis/analysis.service';
+import { LlmContextService } from '../llm/llm-context.service';
 import { LlmService } from '../llm/llm.service';
 import { PromptComposer } from '../prompts/prompt-composer.service';
 import { DUPLICATE_SIMILARITY, rankCandidates } from './candidates';
@@ -33,6 +34,7 @@ export class AdviceService {
     private readonly stats: StatsRepository,
     private readonly analysis: AnalysisService,
     private readonly llm: LlmService,
+    private readonly llmContext: LlmContextService,
     private readonly composer: PromptComposer,
   ) {}
 
@@ -127,19 +129,22 @@ export class AdviceService {
         }
       });
     });
-    const { data } = await this.llm.completeStructured({
-      promptName: 'advice',
-      system: await this.composer.advice(filters.genreIds),
-      user: {
-        period: describePeriod(period),
-        theme: filters.theme ?? null,
-        language: filters.language,
-        targetDurationMin: filters.targetDurationMin,
-        candidates,
-        avoidTopicsAlreadyMade: myTitles,
-      },
-      schema,
-    });
+    const { data } = await this.llmContext.withRunOverrides(filters.llmModelOverrides ?? {}, async () =>
+      this.llm.completeStructured({
+        promptName: 'advice',
+        stageId: 'advice',
+        system: await this.composer.advice(filters.genreIds),
+        user: {
+          period: describePeriod(period),
+          theme: filters.theme ?? null,
+          language: filters.language,
+          targetDurationMin: filters.targetDurationMin,
+          candidates,
+          avoidTopicsAlreadyMade: myTitles,
+        },
+        schema,
+      }),
+    );
 
     const topics: AdviceTopic[] = data.topics.map((t) => {
       const ids = t.sourceVideoIds.filter((id) => candidateIds.has(id));

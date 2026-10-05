@@ -66,6 +66,7 @@ export class PlanningService {
     const useDatabase = await this.dbTools.shouldUse(`${project.topic ?? ''}\n${ctx.feedback ?? ''}`, project.useDatabase);
     const { data, dbToolsUsed } = await this.llm.completeStructured({
       promptName: 'planning',
+      stageId: 'planning',
       projectId: project.id,
       system: await this.composer.planning(project, useDatabase),
       user: {
@@ -99,6 +100,7 @@ export class PlanningService {
   private async shallowResearch(project: Project) {
     const { data } = await this.llm.completeStructured({
       promptName: 'research_queries',
+      stageId: 'plan_shallow_queries',
       projectId: project.id,
       system: await this.composer.research('research_queries', project, false),
       user: { mode: 'shallow', topic: project.topic ?? project.title, language: project.language, chapter: null },

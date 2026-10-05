@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
-  PROJECT_LLM_STAGE_IDS,
+  LLM_STAGE_IDS,
   SEARCH_PROVIDER_IDS,
   adviceFiltersSchema,
   adviceRunResultSchema,
@@ -10,7 +10,7 @@ import {
   type CustomRequest,
   type PlanContent,
   type ProjectDto,
-  type ProjectLlmStageId,
+  type LlmStageId,
   type ProjectStatus,
   type SearchProviderId,
   type UpdateProjectRequest,
@@ -38,16 +38,14 @@ export function toProjectDto(p: Project): ProjectDto {
     useDatabase: p.useDatabase,
     topic: p.topic,
     searchProviders: parseSearchProviders(p.searchProviders),
-    llmResearchModel: p.llmResearchModel,
-    llmWriterModel: p.llmWriterModel,
     llmModelOverrides: parseLlmOverrides(p.llmModelOverrides),
   };
 }
 
 function parseLlmOverrides(raw: unknown): ProjectDto['llmModelOverrides'] {
   if (!raw || typeof raw !== 'object') return {};
-  const out: Partial<Record<ProjectLlmStageId, string>> = {};
-  for (const id of PROJECT_LLM_STAGE_IDS) {
+  const out: Partial<Record<LlmStageId, string>> = {};
+  for (const id of LLM_STAGE_IDS) {
     const v = (raw as Record<string, unknown>)[id];
     if (typeof v === 'string' && v.trim()) out[id] = v.trim();
   }
@@ -151,7 +149,7 @@ export class ProjectsService {
     }
     if (patch.llmModelOverrides !== undefined && patch.llmModelOverrides !== null) {
       for (const key of Object.keys(patch.llmModelOverrides)) {
-        if (!PROJECT_LLM_STAGE_IDS.includes(key as ProjectLlmStageId)) {
+        if (!LLM_STAGE_IDS.includes(key as LlmStageId)) {
           throw invalid(`Unknown LLM stage: ${key}`);
         }
       }

@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { PROJECT_STATUSES } from '../projects/project-status';
 import { llmModelOverridesSchema } from '../llm/overrides-schema';
-import { PROJECT_LLM_STAGE_IDS } from '../llm/stages';
+import { LLM_STAGE_IDS } from '../llm/stages';
+import { LLM_VENDOR_IDS } from '../llm/vendors';
 import { SEARCH_PROVIDER_IDS } from '../search/providers';
 import { FACT_RELATIONS } from './writer.schema';
 
@@ -61,8 +62,6 @@ export const projectSchema = z.object({
   useDatabase: z.boolean(),
   topic: z.string().nullable(),
   searchProviders: z.array(z.enum(SEARCH_PROVIDER_IDS)),
-  llmResearchModel: z.string().nullable(),
-  llmWriterModel: z.string().nullable(),
   llmModelOverrides: llmModelOverridesSchema,
 });
 
@@ -79,24 +78,25 @@ export const llmDefaultsSchema = z.object({
 });
 export type LlmDefaults = z.infer<typeof llmDefaultsSchema>;
 
-export const llmProviderOptionSchema = z.object({
-  id: z.enum(['openai', 'anthropic', 'gemini', 'xai', 'perplexity']),
+export const llmVendorOptionSchema = z.object({
+  id: z.enum(LLM_VENDOR_IDS),
   label: z.string(),
+  modelRef: z.string().nullable(),
   configured: z.boolean(),
 });
 
 export const llmStageOptionSchema = z.object({
-  id: z.enum(PROJECT_LLM_STAGE_IDS),
+  id: z.enum(LLM_STAGE_IDS),
   label: z.string(),
   hint: z.string(),
+  projectScoped: z.boolean(),
+  defaultVendor: z.enum(LLM_VENDOR_IDS).nullable(),
   defaultModel: z.string(),
 });
 
 export const llmCatalogSchema = z.object({
-  providers: z.array(llmProviderOptionSchema),
+  vendors: z.array(llmVendorOptionSchema),
   stages: z.array(llmStageOptionSchema),
-  /** Suggested `provider:model-id` values for datalists (any stage can use any preset). */
-  modelPresets: z.array(z.string()),
 });
 export type LlmCatalog = z.infer<typeof llmCatalogSchema>;
 

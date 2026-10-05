@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { SubtitleCheck, SubtitlesFetchRequest } from '@youtube-ai-tool/shared';
+import type { LlmStageId, SubtitleCheck, SubtitlesFetchRequest } from '@youtube-ai-tool/shared';
+import { LlmContextService } from '../llm/llm-context.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AnalysisService } from '../analysis/analysis.service';
 import { ResearchService } from '../library/research.service';
@@ -23,6 +24,7 @@ export class SubtitlesService {
     private readonly research: ResearchService,
     private readonly ingest: VideoIngestService,
     private readonly analysis: AnalysisService,
+    private readonly llmContext: LlmContextService,
     @Inject(SUBTITLE_PROVIDER) private readonly provider: SubtitleProvider,
   ) {}
 
@@ -41,8 +43,8 @@ export class SubtitlesService {
     return { outcome: saved ? 'saved' : 'unavailable', check: await this.describe(yt) };
   }
 
-  async analyze(videoId: string) {
-    return this.analysis.analyzeTranscript(videoId);
+  async analyze(videoId: string, llmModelOverrides?: Partial<Record<LlmStageId, string>>) {
+    return this.llmContext.withRunOverrides(llmModelOverrides ?? {}, () => this.analysis.analyzeTranscript(videoId));
   }
 
   /** Adds the video, creating a partial channel when needed (6.1.3, 6.1.4); a partial channel gets no AuthorStyle. */

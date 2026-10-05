@@ -58,6 +58,14 @@ a.url-link:hover { text-decoration: underline; }
 /* database: virtualized rows, header stays visible */
 .table-viewport { max-height: calc(100vh - 250px); min-height: 160px; overflow: auto; }
 .table-viewport thead th { position: sticky; top: 0; z-index: 1; background: var(--panel); }
+.tbl-db th { position: relative; user-select: none; }
+.tbl-db th.is-dragging { opacity: 0.45; }
+.tbl-db th .th-label { display: inline-block; max-width: calc(100% - 10px); overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+.tbl-db .col-resize {
+  position: absolute; top: 0; right: 0; width: 7px; height: 100%; cursor: col-resize;
+}
+.tbl-db .col-resize:hover { background: color-mix(in srgb, var(--acc) 35%, transparent); }
+.tbl-db td.is-cell { max-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tbl-virtual td { height: 29px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
 .tbl-virtual tr.spacer td { padding: 0; border: 0; }
 .tbl th.is-sortable { cursor: pointer; }

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { periodFilterSchema } from '../advice/period';
+import { llmModelOverridesSchema } from '../llm/overrides-schema';
 
 const adviceTopicDraftSchema = z.object({
   type: z.enum(['rework', 'analog']),
@@ -32,6 +33,7 @@ export const adviceFiltersSchema = z.object({
   skipMyVideos: z.boolean().default(true),
   language: z.enum(['ru', 'en']).default('ru'),
   targetDurationMin: z.number().int().min(30).max(90).default(52),
+  llmModelOverrides: llmModelOverridesSchema.optional(),
 });
 
 export type AdviceFilters = z.infer<typeof adviceFiltersSchema>;

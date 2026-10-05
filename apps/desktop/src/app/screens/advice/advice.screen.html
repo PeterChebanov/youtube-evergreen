@@ -39,6 +39,14 @@
     </div>
     <label esCheck [(checked)]="skipMine">Skip topics already in My Videos</label>
   </div>
+  <es-llm-vendor-select
+    label="Topics LLM"
+    stageId="advice"
+    [catalog]="catalog()"
+    [vendor]="adviceVendor()"
+    [disabled]="loading()"
+    (vendorChange)="adviceVendor.set($event)"
+  />
   <button #getButton class="btn btn-primary" type="button" [disabled]="loading()" (click)="getTopics()">Get 3 topics</button>
 </div>
 
