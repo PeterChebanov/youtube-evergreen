@@ -1,15 +1,32 @@
 import { Injectable } from '@nestjs/common';
 import { transcriptAnalysisSchema, type TranscriptAnalysis } from '@youtube-ai-tool/shared';
+import type { Project } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { PromptName } from '../llm/prompt-names';
 import { AuthorOverlay, buildLayers, ChannelVoice, renderLayers } from './prompt-layers';
-import { DB_PRIORITY_FILE, PromptsService, RETENTION_BASE_FILE } from './prompts.service';
+import {
+  DB_PRIORITY_FILE,
+  FACT_GEOGRAPHY_FILE,
+  FACT_RECENCY_FILE,
+  NARRATIVE_EDITORIAL_FILE,
+  NARRATIVE_GEOGRAPHY_GLOBAL_FILE,
+  PromptsService,
+  RETENTION_BASE_FILE,
+} from './prompts.service';
 
-type ProjectContext = {
+export type ProjectContext = {
   genreId: string | null;
   authorOverlayChannelId?: string | null;
   toneReferenceVideoIds?: string[];
 };
+
+export function projectContext(project: Pick<Project, 'genreId' | 'authorOverlayChannelId' | 'toneReferenceVideoIds'>): ProjectContext {
+  return {
+    genreId: project.genreId,
+    authorOverlayChannelId: project.authorOverlayChannelId,
+    toneReferenceVideoIds: project.toneReferenceVideoIds,
+  };
+}
 
 /** Assembles system prompts from prompt files and DB-held style/genre layers. */
 @Injectable()
@@ -44,16 +61,28 @@ export class PromptComposer {
         channelStyle: await this.channelVoice(),
         genreModule: await this.genreModule(project.genreId),
         dbPriority: await this.dbPriority(useDatabase),
+        narrativeEditorial: await this.prompts.file(NARRATIVE_EDITORIAL_FILE),
+        narrativeGeographyLock: await this.prompts.file(NARRATIVE_GEOGRAPHY_GLOBAL_FILE),
+        factGeography: await this.prompts.file(FACT_GEOGRAPHY_FILE),
       }),
     );
   }
 
-  async research(name: 'research_queries' | 'fact_extract', project: ProjectContext, useDatabase: boolean) {
+  async research(
+    name: 'research_queries' | 'fact_extract',
+    project: ProjectContext,
+    useDatabase: boolean,
+    opts?: { factGeography?: boolean; factRecency?: boolean },
+  ) {
     return renderLayers(
       buildLayers({
         base: [await this.prompts.forPrompt(name)],
         genreModule: await this.genreModule(project.genreId),
         dbPriority: await this.dbPriority(useDatabase),
+        factGeography: opts?.factGeography ? await this.prompts.file(FACT_GEOGRAPHY_FILE) : null,
+        factRecency: opts?.factRecency ? await this.prompts.file(FACT_RECENCY_FILE) : null,
+        narrativeEditorial: await this.prompts.file(NARRATIVE_EDITORIAL_FILE),
+        narrativeGeographyLock: await this.prompts.file(NARRATIVE_GEOGRAPHY_GLOBAL_FILE),
       }),
     );
   }
@@ -70,6 +99,8 @@ export class PromptComposer {
         overlay: await this.overlay(project.authorOverlayChannelId),
         toneReferences: await this.toneReferences(project.toneReferenceVideoIds ?? []),
         dbPriority: await this.dbPriority(opts.useDatabase),
+        narrativeEditorial: await this.prompts.file(NARRATIVE_EDITORIAL_FILE),
+        narrativeGeographyLock: await this.prompts.file(NARRATIVE_GEOGRAPHY_GLOBAL_FILE),
       }),
     );
   }

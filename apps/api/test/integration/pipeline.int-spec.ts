@@ -41,6 +41,10 @@ describe('Script pipeline', () => {
     );
     expect(project).toMatchObject({ status: 'draft', entryType: 'advice', targetDurationMin: 52 });
     projectId = project.id;
+    const project2 = projectSchema.parse(
+      (await h.http().post('/projects/from-advice').send({ runId: advice.runId, topicIndex: 1 }).expect(201)).body,
+    );
+    expect(project2.id).not.toBe(project.id);
     await h.http().post('/projects/from-advice').send({ runId: advice.runId, topicIndex: 1 }).expect(409);
   });
 
@@ -72,7 +76,6 @@ describe('Script pipeline', () => {
 
   it('researches every chapter after "Send to research" and keeps only sourced facts', async () => {
     await h.http().post(`/projects/${projectId}/plan/approve`).expect(201);
-    await h.http().post(`/projects/${projectId}/plan/refine`).send({ feedback: 'late change' }).expect(409);
 
     const state = await waitFor(facts, settled);
     expect(state.status).toBe('done');

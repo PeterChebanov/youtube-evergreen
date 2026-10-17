@@ -42,6 +42,21 @@
     </section>
 
     <section class="panel">
+      <div class="panel-head"><h2>Script</h2><span class="meta">saved text</span></div>
+      @if (previewError()) {
+        <div class="banner">{{ previewError() }}</div>
+      } @else if (scriptPreview(); as script) {
+        <es-project-tag [title]="script.projectTitle" />
+        <p class="mute" style="padding:0 12px">{{ script.title }} · {{ script.status }}</p>
+        <textarea class="field field-script" readonly [value]="script.text" aria-label="Script preview"></textarea>
+      } @else if (selected()) {
+        <div class="empty" style="margin:12px"><b>Loading script…</b></div>
+      } @else {
+        <div class="empty" style="margin:12px"><b>Select a script</b>Click a row to read the full text.</div>
+      }
+    </section>
+
+    <section class="panel">
       <div class="panel-head"><h2>Topic memory</h2><span class="meta">pgvector</span></div>
       <ul class="kv">
         <li><span>Indexed</span><div class="num">{{ memory()?.indexed ?? 0 }} of {{ memory()?.total ?? 0 }} scripts</div></li>

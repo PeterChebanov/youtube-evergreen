@@ -1,21 +1,27 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Api, errorText } from '../../core/api.service';
 import type { MyVideoItem, TopicMemory } from '../../core/api.types';
 import { fileSlug, saveText } from '../../core/download';
 import { ProjectStore } from '../../core/stores';
+import { WorkspaceStore, type WorkspaceScriptDetail } from '../../core/workspace.store';
+import { ProjectTag } from '../../ui/project-tag';
 import { scriptRows } from './videos.view';
 
 @Component({
   selector: 'section[esVideos]',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ProjectTag],
   host: { class: 'screen', id: 'screen-videos', 'data-screen': 'videos' },
   templateUrl: './videos.screen.html',
 })
 export class VideosScreen {
   private readonly api = inject(Api);
   private readonly projects = inject(ProjectStore);
+  private readonly workspace = inject(WorkspaceStore);
 
   readonly videos = signal<MyVideoItem[] | null>(null);
+  readonly scriptPreview = signal<WorkspaceScriptDetail | null>(null);
+  readonly previewError = signal<string | null>(null);
   readonly memory = signal<TopicMemory | null>(null);
   readonly selectedKey = signal<string | null>(null);
   readonly error = signal<string | null>(null);
@@ -30,6 +36,18 @@ export class VideosScreen {
 
   constructor() {
     void this.load();
+    effect(() => {
+      const row = this.selected();
+      untracked(() => {
+        this.scriptPreview.set(null);
+        this.previewError.set(null);
+        if (!row) return;
+        void this.workspace
+          .scriptDetail(row.projectId)
+          .then((d) => this.scriptPreview.set(d))
+          .catch((e) => this.previewError.set(errorText(e)));
+      });
+    });
   }
 
   async load() {

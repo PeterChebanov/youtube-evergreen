@@ -23,6 +23,38 @@ label.check:focus-visible, .seg > span:focus-visible, .chlist > a:focus-visible,
 }
 .tbl tr.is-clickable { cursor: pointer; }
 
+/* copy text from tables and labels (right-click / drag select) */
+.app .tbl td,
+.app .tbl th,
+.app .cell-title,
+.app .cell-sub,
+.app .chip,
+.app .panel,
+.app .mute,
+.app .banner,
+.app textarea.field,
+.app input.field {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.project-tag {
+  display: inline-block; font-family: var(--f-mono); font-size: 11px; color: var(--mute);
+  margin-bottom: 6px;
+}
+.project-tag b { color: var(--fg); font-weight: 600; }
+.project-tag.inline { margin-bottom: 0; }
+.artifact-detail { padding: 12px; border-top: 1px solid var(--line); }
+.workspace-lib { margin-bottom: var(--s3); }
+
+.pipeline-stages { display: flex; flex-wrap: wrap; gap: 4px; }
+.pipe-stage {
+  font-family: var(--f-mono); font-size: 10px; padding: 2px 6px; border-radius: var(--r);
+  border: 1px solid var(--line); color: var(--mute);
+}
+.pipe-stage.is-done { border-color: color-mix(in srgb, var(--ok) 55%, var(--line)); color: var(--ok); }
+.pipe-stage.is-pending { border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); color: var(--bad); }
+
 /* disabled controls: 50% opacity, no hover */
 .btn:disabled { opacity: 0.5; cursor: default; }
 .btn:disabled:hover { border-color: var(--line); }
@@ -46,6 +78,11 @@ a.url-link:hover { text-decoration: underline; }
   padding-top: 12vh; background: color-mix(in srgb, var(--bg) 72%, transparent);
 }
 .overlay > .panel { width: min(560px, calc(100vw - 32px)); max-height: 72vh; overflow: auto; }
+.overlay > .panel-wide { width: min(920px, calc(100vw - 32px)); max-height: 88vh; overflow: auto; }
+.snippet-panel {
+  position: fixed; right: 16px; bottom: 16px; z-index: 25; width: min(420px, calc(100vw - 32px));
+  max-height: 70vh; overflow: auto; pointer-events: auto;
+}
 .menu-anchor { position: relative; display: flex; align-items: center; }
 .menu {
   position: absolute; top: calc(100% + 4px); right: 0; z-index: 15;

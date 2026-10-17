@@ -25,11 +25,11 @@ import { WriterService } from '../../src/modules/writer/writer.service';
 type Stub = Record<string, jest.Mock>;
 
 const SERVICES: Array<[Type, string[]]> = [
-  [AdviceService, ['run', 'history']],
+  [AdviceService, ['run', 'history', 'library', 'refineTopic']],
   [ProjectsService, ['createFromCustomRequest', 'createFromAdvice', 'list', 'get', 'update', 'remove']],
-  [PlanningService, ['versions', 'generate', 'refine', 'saveManual', 'approve']],
-  [FactResearchService, ['state', 'refine', 'retry', 'addFact', 'deleteFact', 'approve']],
-  [WriterService, ['state', 'write', 'refine', 'saveManual', 'approve', 'finalize', 'exportMarkdown']],
+  [PlanningService, ['versions', 'generate', 'refine', 'refineChapter', 'retryChapter', 'refineAllChapters', 'saveManual', 'addChapter', 'approve']],
+  [FactResearchService, ['state', 'refine', 'retry', 'retryBatch', 'addFact', 'deleteFact', 'approve']],
+  [WriterService, ['state', 'write', 'refine', 'saveManual', 'approve', 'finalize', 'exportMarkdown', 'fullScriptText', 'saveFullScript', 'refineSnippet']],
   [SubtitlesService, ['check', 'fetch', 'analyze']],
   [ResearchService, ['preview', 'start', 'retry', 'refreshAll', 'listChannels', 'detail', 'channelVideos', 'rerun', 'reanalyze']],
   [SingleVideoService, ['storedView', 'snapshot']],
@@ -80,8 +80,8 @@ describe('HTTP contract', () => {
       });
     });
 
-    it('rejects an Advice duration outside 30–90 minutes and names the field', async () => {
-      const res = await http().post('/advice').send({ targetDurationMin: 10 }).expect(400);
+    it('rejects an Advice duration outside 8–120 minutes and names the field', async () => {
+      const res = await http().post('/advice').send({ targetDurationMin: 5 }).expect(400);
       expect(res.body).toMatchObject({ error: 'validation', issues: [expect.objectContaining({ path: 'targetDurationMin' })] });
       expect(stub(AdviceService).run).not.toHaveBeenCalled();
     });
@@ -108,8 +108,13 @@ describe('HTTP contract', () => {
 
     it('rejects a manual plan whose riddle is answered before it is planted', async () => {
       const chapters = [1, 2, 3].map((i) => ({ title: `C${i}`, description: 'd', lengthMin: 10 }));
-      await http().put('/projects/p1/plan').send({ riddle: { question: 'q', plantMin: 30, answerMin: 5 }, chapters }).expect(400);
-      await http().put('/projects/p1/plan').send({ riddle: { question: 'q', plantMin: 1, answerMin: 25 }, chapters }).expect(200);
+      const base = {
+        narrativeFramework: 'One framework for the whole video.',
+        recurringCast: [],
+        chapters,
+      };
+      await http().put('/projects/p1/plan').send({ ...base, riddle: { question: 'q', plantMin: 30, answerMin: 5 } }).expect(400);
+      await http().put('/projects/p1/plan').send({ ...base, riddle: { question: 'q', plantMin: 1, answerMin: 25 } }).expect(200);
     });
 
     it('never accepts a manual fact without a web link', async () => {

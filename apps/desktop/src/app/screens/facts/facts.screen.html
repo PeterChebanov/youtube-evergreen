@@ -1,11 +1,14 @@
+<es-workspace-library kind="research" />
+
 <div class="page-head">
   <div>
+    @if (project(); as p) { <es-project-tag [title]="p.title" /> }
     <h1>Fact research</h1>
     <p class="sub">Web research for every sub-chapter of the approved plan. Every fact carries a URL.</p>
   </div>
   <div class="actions">
-    <button class="btn" type="button" [disabled]="!editable() || running()" (click)="refineOpen.set(!refineOpen())">Refine</button>
-    <button class="btn btn-primary" type="button" [disabled]="!editable() || running() || working() || !state()?.facts?.length" (click)="approve()">Send to writer</button>
+    <button class="btn" type="button" [disabled]="!editable() || running() || working() || !state()?.facts?.length" (click)="retryBatch()">Retry batch</button>
+    <button class="btn btn-primary" type="button" [disabled]="!canHandToWriter() || running() || working() || !state()?.facts?.length" (click)="approve()">Send to writer</button>
   </div>
 </div>
 
@@ -22,19 +25,10 @@
       <button class="btn btn-sm" type="button" [disabled]="working()" (click)="retry()">Retry</button></div>
   }
   @if (!editable() && state()) {
-    <div class="banner">Facts are handed to the writer and can no longer change.</div>
+    <div class="banner">Facts are locked once writing starts.</div>
   }
 
   <es-project-ai-settings [project]="project()" mode="both" />
-
-  @if (refineOpen()) {
-    <form class="refine" (submit)="$event.preventDefault(); refine()">
-      <input class="field" type="text" aria-label="Refine the facts" placeholder="Refine: find primary sources, add a counter-example…"
-        [value]="feedback()" (input)="feedback.set($any($event.target).value)">
-      <label esCheck [(checked)]="onlyChapter" style="align-self:center;flex:none">Only chapter {{ current()?.order }}</label>
-      <button class="btn" type="submit" [disabled]="working()">Refine</button>
-    </form>
-  }
 
   <div class="grid grid-facts">
     <section class="panel">
@@ -57,8 +51,8 @@
         @if (rows().length) {
           <div class="table-scroll">
             <table class="tbl">
-              <colgroup><col style="width:34px"><col style="width:42%"><col style="width:28%"><col></colgroup>
-              <thead><tr><th>#</th><th>Fact</th><th>Source</th><th>Connections</th></tr></thead>
+              <colgroup><col style="width:34px"><col style="width:38%"><col style="width:26%"><col><col style="width:200px"></colgroup>
+              <thead><tr><th>#</th><th>Fact</th><th>Source</th><th>Connections</th>@if (editable()) { <th>Actions</th> }</tr></thead>
               <tbody>
                 @for (row of rows(); track row.fact.id) {
                   <tr>
@@ -69,10 +63,16 @@
                       <div class="chips">
                         @for (r of row.relations; track $index) { <span class="chip">{{ r }}</span> }
                       </div>
-                      @if (editable()) {
-                        <button class="btn btn-sm" type="button" style="margin-top:4px" [disabled]="working()" (click)="removeFact(row.fact.id)">Remove</button>
-                      }
                     </td>
+                    @if (editable()) {
+                      <td>
+                        <div class="actions" style="flex-wrap:wrap;gap:4px">
+                          <button class="btn btn-sm" type="button" [disabled]="working() || running()" (click)="editOneFact(row.fact.id, row.fact.text)">Edit</button>
+                          <button class="btn btn-sm" type="button" [disabled]="working() || running()" (click)="retryOneFact(row.fact.id, row.fact.text)">Retry</button>
+                          <button class="btn btn-sm" type="button" [disabled]="working() || running()" (click)="removeFact(row.fact.id)">Delete</button>
+                        </div>
+                      </td>
+                    }
                   </tr>
                 }
               </tbody>

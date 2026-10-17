@@ -1,5 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { finalizePlan, planDraftSchema, researchQueriesSchema, type PlanContent, type PlanDraft } from '@youtube-ai-tool/shared';
+import {
+  PLAN_EDIT_STATUSES,
+  applyManualPlanTiming,
+  finalizePlan,
+  planChapterCountRange,
+  planDraftSchema,
+  researchQueriesSchema,
+  targetWordsForVideo,
+  type PlanContent,
+  type PlanDraft,
+} from '@youtube-ai-tool/shared';
+import { notFound } from '../../common/domain-error';
 import type { Project } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AnalysisService } from '../analysis/analysis.service';
@@ -7,7 +18,7 @@ import { DbToolsService } from '../db-tools/db-tools.service';
 import { FactResearchService } from '../fact-research/fact-research.service';
 import { LlmService } from '../llm/llm.service';
 import { ProjectsService } from '../projects/projects.service';
-import { PromptComposer } from '../prompts/prompt-composer.service';
+import { projectContext, PromptComposer } from '../prompts/prompt-composer.service';
 import { SearchService } from '../search/search.service';
 
 const SHALLOW_NOTES = 6;
@@ -38,15 +49,99 @@ export class PlanningService {
   }
 
   async refine(projectId: string, feedback: string): Promise<PlanVersionView> {
-    const project = await this.projects.assertStatus(projectId, ['planning']);
+    const project = await this.assertPlanEditable(projectId);
     const previous = await this.projects.latestPlan(projectId);
     const notes = Array.isArray(project.shallowResearch) ? project.shallowResearch : [];
     return this.plan(project, { notes, feedback, previous: previous.content });
   }
 
+  async refineChapter(projectId: string, order: number, feedback: string): Promise<PlanVersionView> {
+    const project = await this.assertPlanEditable(projectId);
+    const previous = await this.projects.latestPlan(projectId);
+    const chapter = this.requireChapter(previous.content, order);
+    const notes = Array.isArray(project.shallowResearch) ? project.shallowResearch : [];
+    return this.plan(project, {
+      notes,
+      feedback: `Change ONLY chapter ${order} ("${chapter.title}"). Author notes: ${feedback}. Keep every other chapter unchanged; preserve each chapter's lengthMin.`,
+      previous: previous.content,
+      preserveChapterLengths: true,
+    });
+  }
+
+  async retryChapter(projectId: string, order: number, userNotes?: string): Promise<PlanVersionView> {
+    const project = await this.assertPlanEditable(projectId);
+    const previous = await this.projects.latestPlan(projectId);
+    const chapter = this.requireChapter(previous.content, order);
+    const notes = Array.isArray(project.shallowResearch) ? project.shallowResearch : [];
+    const advice = this.adviceBrief(project);
+    const extra = userNotes?.trim() ? ` Author direction: ${userNotes.trim()}.` : '';
+    return this.plan(project, {
+      notes,
+      feedback: `Regenerate ONLY chapter ${order} ("${chapter.title}") from scratch with fresh hooks, subpoints and description. Ground the chapter in the original Advice brief: ${advice}. Current chapter to replace: ${JSON.stringify({ title: chapter.title, description: chapter.description, subpoints: chapter.subpoints })}.${extra} Keep every other chapter unchanged; preserve each remaining chapter's lengthMin.`,
+      previous: previous.content,
+      preserveChapterLengths: true,
+    });
+  }
+
+  async addChapter(
+    projectId: string,
+    input: { insertAfter: number; description: string; lengthMin: number; title?: string },
+  ): Promise<PlanVersionView> {
+    const project = await this.assertPlanEditable(projectId);
+    const previous = await this.projects.latestPlan(projectId);
+    const { content } = previous;
+    if (input.insertAfter > content.chapters.length) throw notFound(`Insert position ${input.insertAfter}`);
+    const draft = this.contentToDraft(content);
+    draft.chapters.splice(input.insertAfter, 0, {
+      title: input.title?.trim() || 'New chapter',
+      description: input.description.trim(),
+      lengthMin: input.lengthMin,
+      subpoints: [],
+      hooks: [],
+      techniques: [],
+      ending: '',
+      bridge: '',
+      buildsOn: '',
+      doNotRepeat: [],
+    });
+    const timed = applyManualPlanTiming(draft, project.targetDurationMin);
+    const newOrder = input.insertAfter + 1;
+    const notes = Array.isArray(project.shallowResearch) ? project.shallowResearch : [];
+    const advice = this.adviceBrief(project);
+    return this.plan(project, {
+      notes,
+      feedback: `Develop ONLY the NEW chapter at order ${newOrder} from this author brief: ${input.description.trim()}. Advice context: ${advice}. Give it rich subpoints, hooks, techniques, ending, bridge, buildsOn, doNotRepeat. Keep every OTHER chapter identical to previousPlan (same title, description, subpoints, hooks, lengthMin).`,
+      previous: timed,
+      preserveChapterLengths: { insertedAtIndex: input.insertAfter },
+    });
+  }
+
+  /** Re-run the planning model on each chapter in sequence (one saved version). */
+  async refineAllChapters(projectId: string): Promise<PlanVersionView> {
+    const project = await this.assertPlanEditable(projectId);
+    const notes = Array.isArray(project.shallowResearch) ? project.shallowResearch : [];
+    let content = (await this.projects.latestPlan(projectId)).content;
+    for (const ch of content.chapters) {
+      content = await this.planContent(project, {
+        notes,
+        feedback: `Regenerate ONLY chapter ${ch.order} ("${ch.title}") from scratch. Keep other chapters unchanged; preserve each chapter's lengthMin.`,
+        previous: content,
+        preserveChapterLengths: true,
+      });
+    }
+    return this.save(project, content, 'Refine all chapters (batch)');
+  }
+
   async saveManual(projectId: string, draft: PlanDraft): Promise<PlanVersionView> {
-    const project = await this.projects.assertStatus(projectId, ['planning']);
-    return this.save(project, finalizePlan(draft, project.targetDurationMin), 'manual edit');
+    const project = await this.assertPlanEditable(projectId);
+    return this.save(project, applyManualPlanTiming(draft, project.targetDurationMin), 'manual edit');
+  }
+
+  /** Re-scale chapter lengths after the author changes project target duration. */
+  async rescaleToTarget(projectId: string): Promise<PlanVersionView> {
+    const project = await this.assertPlanEditable(projectId);
+    const { content } = await this.projects.latestPlan(projectId);
+    return this.save(project, finalizePlan(this.contentToDraft(content), project.targetDurationMin), 'rescale to target');
   }
 
   /** "Send to research": locks the plan and starts the fact research (REQUIREMENTS 3.8). */
@@ -62,13 +157,34 @@ export class PlanningService {
     return rows.map((r) => ({ version: r.version, content: r.content as PlanContent, feedback: r.feedback, createdAt: r.createdAt.toISOString() }));
   }
 
-  private async plan(project: Project, ctx: { notes: unknown; feedback?: string; previous?: PlanContent }): Promise<PlanVersionView> {
+  private async plan(
+    project: Project,
+    ctx: {
+      notes: unknown;
+      feedback?: string;
+      previous?: PlanContent;
+      preserveChapterLengths?: true | { insertedAtIndex: number };
+    },
+  ): Promise<PlanVersionView> {
+    const content = await this.planContent(project, ctx);
+    return this.save(project, content, ctx.feedback ?? null);
+  }
+
+  private async planContent(
+    project: Project,
+    ctx: {
+      notes: unknown;
+      feedback?: string;
+      previous?: PlanContent;
+      preserveChapterLengths?: true | { insertedAtIndex: number };
+    },
+  ): Promise<PlanContent> {
     const useDatabase = await this.dbTools.shouldUse(`${project.topic ?? ''}\n${ctx.feedback ?? ''}`, project.useDatabase);
     const { data, dbToolsUsed } = await this.llm.completeStructured({
       promptName: 'planning',
       stageId: 'planning',
       projectId: project.id,
-      system: await this.composer.planning(project, useDatabase),
+      system: await this.composer.planning(projectContext(project), useDatabase),
       user: {
         project: {
           title: project.title,
@@ -76,6 +192,8 @@ export class PlanningService {
           subtopic: project.subtopic,
           language: project.language,
           targetDurationMin: project.targetDurationMin,
+          chapterCountRange: planChapterCountRange(project.targetDurationMin),
+          wordBudget: targetWordsForVideo(project.targetDurationMin),
         },
         sourceVideos: await this.sourceVideos(project),
         shallowResearch: ctx.notes,
@@ -85,8 +203,70 @@ export class PlanningService {
       schema: planDraftSchema,
       tools: useDatabase ? this.dbTools.toolSet() : undefined,
     });
-    const content = finalizePlan({ ...data, dbDataUsed: [...new Set([...data.dbDataUsed, ...dbToolsUsed])] }, project.targetDurationMin);
-    return this.save(project, content, ctx.feedback ?? null);
+    const merged = { ...data, dbDataUsed: [...new Set([...data.dbDataUsed, ...dbToolsUsed])] };
+    if (ctx.preserveChapterLengths && ctx.previous) {
+      const inserted =
+        ctx.preserveChapterLengths === true ? undefined : ctx.preserveChapterLengths.insertedAtIndex;
+      return this.mergeLengthsByIndex(ctx.previous, merged, project.targetDurationMin, inserted);
+    }
+    return finalizePlan(merged, project.targetDurationMin);
+  }
+
+  /** Keep chapter lengths from the previous plan (by index); optional insert shifts indices after a new chapter. */
+  private mergeLengthsByIndex(
+    previous: PlanContent,
+    draft: PlanDraft,
+    targetDurationMin: number,
+    insertedAtIndex?: number,
+  ): PlanContent {
+    const prevLens = previous.chapters.map((c) => c.lengthMin);
+    const chapters = draft.chapters.map((c, i) => {
+      let lengthMin = c.lengthMin;
+      if (insertedAtIndex !== undefined) {
+        if (i < insertedAtIndex) lengthMin = prevLens[i] ?? c.lengthMin;
+        else if (i === insertedAtIndex) lengthMin = c.lengthMin;
+        else lengthMin = prevLens[i - 1] ?? c.lengthMin;
+      } else {
+        lengthMin = prevLens[i] ?? c.lengthMin;
+      }
+      return { ...c, lengthMin };
+    });
+    return applyManualPlanTiming({ ...draft, chapters }, targetDurationMin);
+  }
+
+  private contentToDraft(content: PlanContent): PlanDraft {
+    return {
+      riddle: { ...content.riddle },
+      narrativeFramework: content.narrativeFramework,
+      recurringCast: content.recurringCast ?? [],
+      chapters: content.chapters.map((c) => ({
+        title: c.title,
+        description: c.description,
+        lengthMin: c.lengthMin,
+        subpoints: c.subpoints ?? [],
+        hooks: c.hooks ?? [],
+        techniques: c.techniques ?? [],
+        ending: c.ending ?? '',
+        bridge: c.bridge ?? '',
+        buildsOn: c.buildsOn ?? '',
+        doNotRepeat: c.doNotRepeat ?? [],
+      })),
+      dbDataUsed: content.dbDataUsed ?? [],
+    };
+  }
+
+  private adviceBrief(project: Project) {
+    return [project.title, project.topic, project.subtopic].filter(Boolean).join(' · ');
+  }
+
+  private async assertPlanEditable(projectId: string) {
+    return this.projects.assertStatus(projectId, [...PLAN_EDIT_STATUSES]);
+  }
+
+  private requireChapter(plan: PlanContent, order: number) {
+    const chapter = plan.chapters.find((c) => c.order === order);
+    if (!chapter) throw notFound(`Plan chapter ${order}`);
+    return chapter;
   }
 
   private async save(project: Project, content: PlanContent, feedback: string | null): Promise<PlanVersionView> {
@@ -102,7 +282,7 @@ export class PlanningService {
       promptName: 'research_queries',
       stageId: 'plan_shallow_queries',
       projectId: project.id,
-      system: await this.composer.research('research_queries', project, false),
+      system: await this.composer.research('research_queries', projectContext(project), false),
       user: { mode: 'shallow', topic: project.topic ?? project.title, language: project.language, chapter: null },
       schema: researchQueriesSchema,
     });

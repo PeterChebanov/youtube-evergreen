@@ -48,6 +48,7 @@ describe('project pipeline', () => {
 
 describe('finalizePlan', () => {
   const draft = planDraftSchema.parse({
+    narrativeFramework: 'One framework for the whole video.',
     riddle: { question: 'Where did the people go?', plantMin: 1, answerMin: 45 },
     chapters: [
       { title: 'Cold open', description: 'd', lengthMin: 5 },

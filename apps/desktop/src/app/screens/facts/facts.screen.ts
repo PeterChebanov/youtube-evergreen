@@ -1,11 +1,14 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
+import { canEditFacts } from '@youtube-ai-tool/shared';
 import { Api, errorText } from '../../core/api.service';
 import type { FactResearchState } from '../../core/api.types';
 import { JOB_POLL_MS } from '../../core/config';
 import { shortUrl } from '../../core/format';
 import { Nav, ProjectStore, poll } from '../../core/stores';
-import { Check } from '../../ui/check';
+import { Dialogs } from '../../ui/dialog';
 import { ProjectAiSettings } from '../../ui/project-ai-settings';
+import { ProjectTag } from '../../ui/project-tag';
+import { WorkspaceLibrary } from '../../ui/workspace-library';
 import { chapterFacts, isHttpUrl, sourcesMeta } from './facts.view';
 
 const ACTIVE = ['queued', 'running'];
@@ -13,22 +16,20 @@ const ACTIVE = ['queued', 'running'];
 @Component({
   selector: 'section[esFacts]',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Check, ProjectAiSettings],
+  imports: [ProjectAiSettings, ProjectTag, WorkspaceLibrary],
   host: { class: 'screen', id: 'screen-facts', 'data-screen': 'facts' },
   templateUrl: './facts.screen.html',
 })
 export class FactsScreen {
   private readonly api = inject(Api);
   private readonly nav = inject(Nav);
+  private readonly dialogs = inject(Dialogs);
   readonly projects = inject(ProjectStore);
 
   readonly state = signal<FactResearchState | null>(null);
   readonly loadError = signal<string | null>(null);
   readonly actionError = signal<string | null>(null);
   readonly selectedOrder = signal<number | null>(null);
-  readonly refineOpen = signal(false);
-  readonly feedback = signal('');
-  readonly onlyChapter = signal(true);
   readonly newText = signal('');
   readonly newUrl = signal('');
   readonly addError = signal<string | null>(null);
@@ -37,7 +38,8 @@ export class FactsScreen {
 
   readonly project = this.projects.current;
   readonly started = computed(() => !['draft', 'planning'].includes(this.project()?.status ?? 'draft'));
-  readonly editable = computed(() => this.project()?.status === 'researching');
+  readonly editable = computed(() => canEditFacts(this.project()?.status ?? 'draft'));
+  readonly canHandToWriter = computed(() => this.project()?.status === 'researching');
   readonly running = computed(() => ACTIVE.includes(this.state()?.status ?? ''));
   readonly chapters = computed(() => this.state()?.chapters ?? []);
   readonly current = computed(() => this.chapters().find((c) => c.order === this.selectedOrder()) ?? this.chapters().at(0) ?? null);
@@ -72,12 +74,31 @@ export class FactsScreen {
     }
   }
 
-  async refine() {
-    const text = this.feedback().trim();
-    if (!text) return;
-    await this.act(() => this.api.refineFacts(this.project()!.id, text, this.onlyChapter() ? this.current()?.order : undefined));
-    this.feedback.set('');
-    this.refineOpen.set(false);
+  retryBatch() {
+    return this.act(() => this.api.retryFactsBatch(this.project()!.id));
+  }
+
+  async retryOneFact(factId: string, factText: string) {
+    const notes = await this.dialogs.prompt({
+      title: 'Retry this fact',
+      description: factText.length > 280 ? `${factText.slice(0, 277)}…` : factText,
+      placeholder: 'Optional: e.g. find a 2026 source, AI angle…',
+      confirmLabel: 'Retry fact',
+      allowEmpty: true,
+    });
+    if (notes === null) return;
+    await this.act(() => this.api.retryFact(this.project()!.id, factId, notes));
+  }
+
+  async editOneFact(factId: string, factText: string) {
+    const feedback = await this.dialogs.prompt({
+      title: 'Edit this fact',
+      description: factText.length > 280 ? `${factText.slice(0, 277)}…` : factText,
+      placeholder: 'What to add, remove, or change…',
+      confirmLabel: 'Edit fact',
+    });
+    if (!feedback?.trim()) return;
+    await this.act(() => this.api.refineFact(this.project()!.id, factId, feedback.trim()));
   }
 
   searchAgain(order: number) {

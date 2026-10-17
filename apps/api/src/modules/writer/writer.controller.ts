@@ -1,6 +1,11 @@
 import { Body, Controller, Get, Header, Param, ParseIntPipe, Post, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { chapterTextRequestSchema, feedbackRequestSchema } from '@youtube-ai-tool/shared';
+import {
+  chapterTextRequestSchema,
+  feedbackRequestSchema,
+  fullScriptSaveRequestSchema,
+  writerSnippetRefineRequestSchema,
+} from '@youtube-ai-tool/shared';
 import type { z } from 'zod';
 import { ApiZodBody, ZodPipe } from '../../common/zod';
 import { WriterService } from './writer.service';
@@ -19,6 +24,29 @@ export class WriterController {
   @Header('content-type', 'text/markdown; charset=utf-8')
   export(@Param('projectId') projectId: string) {
     return this.writer.exportMarkdown(projectId);
+  }
+
+  @Get('full-text')
+  fullText(@Param('projectId') projectId: string) {
+    return this.writer.fullScriptText(projectId);
+  }
+
+  @Put('full-text')
+  @ApiZodBody(fullScriptSaveRequestSchema)
+  saveFullText(
+    @Param('projectId') projectId: string,
+    @Body(new ZodPipe(fullScriptSaveRequestSchema)) body: z.output<typeof fullScriptSaveRequestSchema>,
+  ) {
+    return this.writer.saveFullScript(projectId, body.fullText);
+  }
+
+  @Post('snippet-refine')
+  @ApiZodBody(writerSnippetRefineRequestSchema)
+  snippetRefine(
+    @Param('projectId') projectId: string,
+    @Body(new ZodPipe(writerSnippetRefineRequestSchema)) body: z.output<typeof writerSnippetRefineRequestSchema>,
+  ) {
+    return this.writer.refineSnippet(projectId, body.fragment, body.instructions);
   }
 
   @Post('finalize')

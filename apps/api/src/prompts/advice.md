@@ -15,4 +15,6 @@ For each topic:
 
 Do not propose anything close to a title in `avoidTopicsAlreadyMade`.
 
-Return `{"topics": [{"type", "title", "topic", "subtopic", "genre", "rationale", "sourceVideoIds", "draftChapters": [{"title", "subIdeas"}], "riddle"}]}`.
+When `mode` is `refine`, input includes `previousTopic` and `feedback`. Adjust that single topic per the author's notes: add, remove, or reword draft chapters and angles; keep the same `type` unless feedback clearly requires a shift. Stay on `sourceVideoIds` from the previous topic when possible. Return one topic object with the same fields as above (not three topics).
+
+Return `{"topics": [{"type", "title", "topic", "subtopic", "genre", "rationale", "sourceVideoIds", "draftChapters": [{"title", "subIdeas"}], "riddle"}]}` for a full run, or the same object shape for `refine`.

@@ -93,6 +93,9 @@ export const MOCK_RESPONSES: Record<PromptName, (input: Input) => unknown> = {
     const titles = ['Cold open', 'The world before', 'The first crack', 'Escalation', 'The answer'];
     return {
       riddle: { question: `What really decided the fate of ${subject}?`, plantMin: 1, answerMin: 45 },
+      narrativeFramework:
+        'False role, emotion, time pressure, isolation; antidote = pause and independent verification.',
+      recurringCast: [{ label: 'Witness', role: 'Opens the story', returnInFinal: true }],
       chapters: titles.map((t, i) => ({
         title: feedback && i === 1 ? `${t} (revised)` : t,
         description: `${t} of ${subject}.`,
@@ -102,6 +105,8 @@ export const MOCK_RESPONSES: Record<PromptName, (input: Input) => unknown> = {
         techniques: ['open loop'],
         ending: `Leaves the viewer asking what comes after ${t.toLowerCase()}`,
         bridge: 'But that was only the beginning.',
+        buildsOn: i === 0 ? '' : 'Prior chapters established the stakes.',
+        doNotRepeat: i === 0 ? [] : ['Cold open scene'],
       })),
     };
   },
@@ -116,19 +121,31 @@ export const MOCK_RESPONSES: Record<PromptName, (input: Input) => unknown> = {
       relations: i > 0 ? [{ toIndex: i - 1, kind: 'supports' }] : [],
     })),
   }),
-  writer: ({ chapter = {}, facts = [], previouslyTold = [] }) => ({
+  writer: ({ chapter = {}, facts = [], previouslyTold = [], continuity }) => {
+    const prior = previouslyTold.length ? previouslyTold : (continuity?.priorSummaries ?? []);
+    return {
     chapterText: [
       `${chapter.title}.`,
-      previouslyTold.length ? `We already know ${previouslyTold.at(-1)}` : 'Imagine you are standing at the very start of this story.',
+      prior.length ? `We already know ${prior.at(-1)}` : 'Imagine you are standing at the very start of this story.',
       chapter.description,
       ...facts.slice(0, 3).map((f: Input) => `${f.text}`),
       chapter.bridge || 'And this is where things get stranger.',
     ]
       .filter(Boolean)
       .join('\n\n'),
-  }),
+  };
+  },
   writer_refine: ({ currentText = '', feedback }) => ({
     chapterText: `${currentText}\n\n${feedback ? `Revised for: ${feedback}.` : ''}`.trim(),
   }),
-  chapter_summary: ({ text = '' }) => ({ summary: String(text).replace(/\s+/g, ' ').slice(0, 240) || 'empty chapter' }),
+  writer_snippet_refine: ({ fragment = '', instructions = '' }) => ({
+    text: `${fragment}\n\n[${instructions}]`.trim(),
+  }),
+  chapter_summary: ({ text = '' }) => ({
+    summary: String(text).replace(/\s+/g, ' ').slice(0, 240) || 'empty chapter',
+    termsIntroduced: [],
+    imagesUsed: [],
+    mechanismsExplained: [],
+    recurringCastUpdates: [],
+  }),
 };

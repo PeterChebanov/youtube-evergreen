@@ -22,6 +22,10 @@ export type LayerSources = {
   overlay?: AuthorOverlay | null;
   toneReferences?: TranscriptAnalysis[];
   dbPriority?: string | null;
+  factGeography?: string | null;
+  factRecency?: string | null;
+  narrativeEditorial?: string | null;
+  narrativeGeographyLock?: string | null;
 };
 
 export const OVERLAY_GUARD =
@@ -73,6 +77,10 @@ export function buildLayers(src: LayerSources): PromptLayer[] {
     { label: 'Stylistic overlay', body: overlayLayer(src.overlay) },
     { label: 'Tone references', body: toneLayer(src.toneReferences) },
     { label: 'Database', body: src.dbPriority },
+    { label: 'Geography and sourcing', body: src.factGeography },
+    { label: 'Fact recency and time scope', body: src.factRecency },
+    { label: 'Narrative editorial', body: src.narrativeEditorial },
+    { label: 'Case geography lock', body: src.narrativeGeographyLock },
   ];
 }
 

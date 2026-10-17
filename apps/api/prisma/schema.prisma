@@ -195,6 +195,7 @@ model Project {
   entryType              String          @map("entry_type")
   language               String          @default("ru")
   targetDurationMin      Int             @map("target_duration_min")
+  caseGeography          String          @default("us") @map("case_geography")
   genreId                String?         @map("genre_id")
   genre                  Genre?          @relation(fields: [genreId], references: [id])
   authorOverlayChannelId String?         @map("author_overlay_channel_id")

@@ -73,8 +73,8 @@ const planChapters = chapterTitles.map((title, i) => {
   return c;
 });
 const plan = [
-  { version: 2, feedback: 'shorter chapter 3', createdAt: iso(-1), content: { targetDurationMin: 52, riddle: { question: 'Where did the people go?', plantMin: 1.3, answerMin: 47.7 }, chapters: planChapters, dbDataUsed: ['find_videos'] } },
-  { version: 1, feedback: null, createdAt: iso(-2), content: { targetDurationMin: 52, riddle: { question: 'Where did the people go?', plantMin: 1.3, answerMin: 47.7 }, chapters: planChapters, dbDataUsed: [] } },
+  { version: 2, feedback: 'shorter chapter 3', createdAt: iso(-1), content: { targetDurationMin: 52, riddle: { question: 'Where did the people go?', plantMin: 1.3, answerMin: 47.7 }, narrativeFramework: 'False role, emotion, time pressure, isolation; antidote = pause and independent verification.', recurringCast: [], chapters: planChapters, dbDataUsed: ['find_videos'] } },
+  { version: 1, feedback: null, createdAt: iso(-2), content: { targetDurationMin: 52, riddle: { question: 'Where did the people go?', plantMin: 1.3, answerMin: 47.7 }, narrativeFramework: 'False role, emotion, time pressure, isolation; antidote = pause and independent verification.', recurringCast: [], chapters: planChapters, dbDataUsed: [] } },
 ];
 
 const facts = {

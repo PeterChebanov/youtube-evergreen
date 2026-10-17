@@ -1,7 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { estimateBasicAnalysisCost, LLM_STAGE_IDS, type LlmStageId } from '@youtube-ai-tool/shared';
-import type { z } from 'zod';
+import { z, type ZodTypeAny } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import { errorMessage, unavailable } from '../../common/domain-error';
 import type { AppConfig } from '../../config/app.config';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -18,6 +19,19 @@ import { listConfiguredVendors, resolveEmbeddingModel, resolveModelRef } from '.
 
 const MAX_TOOL_ROUNDS = 5;
 const MAX_REPAIRS = 2;
+
+const toJsonSchema = zodToJsonSchema as unknown as (schema: ZodTypeAny, options: { target: 'openApi3' }) => Record<string, unknown>;
+
+function schemaForJsonExport(schema: ZodTypeAny): ZodTypeAny {
+  if (schema instanceof z.ZodEffects) return schemaForJsonExport(schema._def.schema);
+  return schema;
+}
+
+function structuredSchemaForPrompt(promptName: PromptName, schema: ZodTypeAny) {
+  const jsonSchema = { ...toJsonSchema(schemaForJsonExport(schema), { target: 'openApi3' }) };
+  delete jsonSchema.$schema;
+  return { name: promptName.replace(/[^a-zA-Z0-9_]/g, '_') || 'response', schema: jsonSchema };
+}
 
 function parseOverrides(raw: unknown): Partial<Record<LlmStageId, string>> {
   if (!raw || typeof raw !== 'object') return {};
@@ -80,6 +94,7 @@ export class LlmService {
           promptName: req.promptName,
           messages,
           tools: offerTools ? req.tools!.definitions : undefined,
+          structuredSchema: offerTools ? undefined : structuredSchemaForPrompt(req.promptName, req.schema),
         });
         inputTokens += res.inputTokens;
         outputTokens += res.outputTokens;

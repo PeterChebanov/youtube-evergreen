@@ -65,6 +65,7 @@ export function filterVideosForPeriod(videos: YoutubeVideo[], period: ResearchPe
 
 /** True when playlist page is entirely older than the range (newest-first order). */
 export function pageEntirelyBeforePeriod(videos: YoutubeVideo[], period: ResearchPeriod): boolean {
-  if (!period.publishedAfter || !videos.length) return false;
-  return videos.every((v) => v.publishedAt < period.publishedAfter);
+  const after = period.publishedAfter;
+  if (!after || !videos.length) return false;
+  return videos.every((v) => v.publishedAt < after);
 }

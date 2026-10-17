@@ -18,6 +18,7 @@ import { QueueModule } from './modules/queue/queue.module';
 import { SearchModule } from './modules/search/search.module';
 import { StyleModule } from './modules/style/style.module';
 import { SubtitlesModule } from './modules/subtitles/subtitles.module';
+import { WorkspaceModule } from './modules/workspace/workspace.module';
 import { WriterModule } from './modules/writer/writer.module';
 import { YoutubeModule } from './modules/youtube/youtube.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -49,6 +50,7 @@ import { PrismaModule } from './prisma/prisma.module';
     DatabaseViewModule,
     MyVideosModule,
     OpsModule,
+    WorkspaceModule,
   ],
 })
 export class AppModule {}

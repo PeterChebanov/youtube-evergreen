@@ -1,9 +1,11 @@
 import { z } from 'zod';
+import { targetDurationMinSchema } from '../video/target-duration';
 import { llmModelOverridesSchema } from '../llm/overrides-schema';
 import { LLM_STAGE_IDS } from '../llm/stages';
 import { LLM_VENDOR_IDS } from '../llm/vendors';
 import { SEARCH_PROVIDER_IDS } from '../search/providers';
 import { researchPeriodFieldsObject, researchPeriodOrderRefine } from '../research/period';
+import { adviceTopicSchema } from './advice.schema';
 import { planDraftSchema } from './plan.schema';
 
 const text = z.string().trim().min(1);
@@ -42,7 +44,7 @@ export const customRequestSchema = z.object({
   researchChannelIntoDb: z.boolean().default(false),
   useDatabase: z.boolean().default(false),
   language: language.default('ru'),
-  targetDurationMin: z.number().int().min(30).max(90).default(52),
+  targetDurationMin: targetDurationMinSchema.default(52),
   genreId: z.string().nullable().default(null),
 });
 export type CustomRequest = z.infer<typeof customRequestSchema>;
@@ -52,11 +54,24 @@ export const pickTopicRequestSchema = z.object({
   topicIndex: z.number().int().min(0).max(2),
 });
 
+export const adviceRefineRequestSchema = z.object({
+  runId: text,
+  topicIndex: z.number().int().min(0).max(2),
+  feedback: text,
+  llmModelOverrides: llmModelOverridesSchema.optional(),
+});
+
+export const adviceTopicRefineResultSchema = z.object({
+  runId: z.string(),
+  topicIndex: z.number().int().min(0).max(2),
+  topic: adviceTopicSchema,
+});
+
 export const updateProjectRequestSchema = z
   .object({
     title: text,
     language,
-    targetDurationMin: z.number().int().min(30).max(90),
+    targetDurationMin: targetDurationMinSchema,
     genreId: z.string().nullable(),
     authorOverlayChannelId: z.string().nullable(),
     toneReferenceVideoIds: z.array(z.string()).max(3),
@@ -68,6 +83,17 @@ export const updateProjectRequestSchema = z
 export type UpdateProjectRequest = z.infer<typeof updateProjectRequestSchema>;
 
 export const feedbackRequestSchema = z.object({ feedback: text });
+
+export const optionalFeedbackRequestSchema = z.object({
+  feedback: z.string().trim().optional(),
+});
+
+export const addPlanChapterRequestSchema = z.object({
+  insertAfter: z.number().int().min(0),
+  description: text,
+  lengthMin: z.number().positive(),
+  title: z.string().trim().min(1).optional(),
+});
 
 export const factRefineRequestSchema = z.object({
   feedback: text,

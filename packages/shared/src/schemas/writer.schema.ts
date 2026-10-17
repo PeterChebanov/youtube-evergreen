@@ -5,9 +5,20 @@ export const writerChapterSchema = z.object({
   dbDataUsed: z.array(z.string()).default([]),
 });
 
-export const chapterSummarySchema = z.object({
-  summary: z.string().min(1),
+export const writerSnippetSchema = z.object({
+  text: z.string().min(1),
 });
+
+export const fullScriptSaveRequestSchema = z.object({
+  fullText: z.string(),
+});
+
+export const writerSnippetRefineRequestSchema = z.object({
+  fragment: z.string().trim().min(1),
+  instructions: z.string().trim().min(1),
+});
+
+export { chapterContinuitySchema as chapterSummarySchema } from '../narrative/continuity';
 
 export const researchQueriesSchema = z.object({
   queries: z.array(z.string().min(2)).min(1).max(5),

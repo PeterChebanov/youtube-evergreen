@@ -108,6 +108,7 @@ function buildLlmBlock() {
     fact_extract: stageDefaults.fact_extract,
     writer: stageDefaults.writer,
     writer_refine: stageDefaults.writer_refine,
+    writer_snippet_refine: stageDefaults.writer_refine,
     chapter_summary: stageDefaults.chapter_summary,
   };
 

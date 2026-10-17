@@ -11,6 +11,7 @@ export const PROMPT_NAMES = [
   'fact_extract',
   'writer',
   'writer_refine',
+  'writer_snippet_refine',
   'chapter_summary',
 ] as const;
 

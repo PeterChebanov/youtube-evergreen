@@ -1,3 +1,4 @@
+import { planTotalDurationMin, type PlanDraft } from '@youtube-ai-tool/shared';
 import type { PlanChapter, PlanContent } from '../../core/api.types';
 import { minutesClock } from '../../core/format';
 
@@ -10,7 +11,7 @@ const round1 = (v: number) => Math.round(v * 10) / 10;
  * never leaves the timeline (DESIGN_SPEC 5.5).
  */
 export function riddleMarkers(plan: PlanContent): TimelineMarker[] {
-  const total = plan.targetDurationMin || plan.chapters.reduce((s, c) => s + c.lengthMin, 0) || 1;
+  const total = planTotalDurationMin(plan) || 1;
   const pct = (min: number) => Math.min(100, Math.max(0, (min / total) * 100));
   const marker = (label: string, at: number): TimelineMarker =>
     at <= 50
@@ -36,5 +37,27 @@ export function chapterChips(plan: PlanContent, chapter: PlanChapter): HookChip[
 }
 
 export function planSubtitle(plan: PlanContent): string {
-  return `Target ${minutesClock(plan.targetDurationMin)} · mandatory riddle planted at ${minutesClock(plan.riddle.plantMin)} and answered at ${minutesClock(plan.riddle.answerMin)}.`;
+  return `Total ${minutesClock(planTotalDurationMin(plan))} · target ${minutesClock(plan.targetDurationMin)} · riddle at ${minutesClock(plan.riddle.plantMin)} / ${minutesClock(plan.riddle.answerMin)}.`;
+}
+
+/** Strip timing metadata before manual save; server rescales lengths to target duration. */
+export function planToDraft(content: PlanContent): PlanDraft {
+  return {
+    riddle: { ...content.riddle },
+    narrativeFramework: content.narrativeFramework,
+    recurringCast: content.recurringCast ?? [],
+    chapters: content.chapters.map((c) => ({
+      title: c.title,
+      description: c.description,
+      lengthMin: c.lengthMin,
+      subpoints: c.subpoints ?? [],
+      hooks: c.hooks ?? [],
+      techniques: c.techniques ?? [],
+      ending: c.ending ?? '',
+      bridge: c.bridge ?? '',
+      buildsOn: c.buildsOn ?? '',
+      doNotRepeat: c.doNotRepeat ?? [],
+    })),
+    dbDataUsed: content.dbDataUsed ?? [],
+  };
 }

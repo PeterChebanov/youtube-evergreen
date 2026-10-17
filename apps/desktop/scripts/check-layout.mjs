@@ -25,7 +25,7 @@ const apiUrl = liveIndex > 0 ? process.argv[liveIndex + 1] ?? 'http://localhost:
 const PREPARE = {
   advice: async (page) => {
     await page.getByRole('button', { name: 'Get 3 topics' }).click();
-    await page.waitForSelector('[data-screen="advice"] tbody .cell-title');
+    await page.waitForSelector('[data-screen="advice"] .advice-acc-topic');
   },
   subtitles: async (page) => {
     await page.fill('#subs-url', 'https://www.youtube.com/watch?v=abcdefghijk');

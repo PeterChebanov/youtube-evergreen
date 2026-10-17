@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom, Observable } from 'rxjs';
 import type {
   AdviceFilters,
+  AdviceLibraryItem,
   AdviceRunResult,
   ChannelDetail,
   ChannelStyle,
@@ -17,6 +18,10 @@ import type {
   OpsStatus,
   PlanVersion,
   ProjectDto,
+  WorkspaceCatalog,
+  WorkspacePlanDetail,
+  WorkspaceResearchDetail,
+  WorkspaceScriptDetail,
   ResearchPreview,
   ResearchRequestBody,
   SubtitleCheck,
@@ -78,6 +83,18 @@ export class Api {
   channel = (id: string) => this.get<ChannelDetail>(`/library/channels/${id}`);
 
   advice = (filters: Partial<AdviceFilters>) => this.post<AdviceRunResult>('/advice', filters);
+  refineAdvice = (body: {
+    runId: string;
+    topicIndex: number;
+    feedback: string;
+    llmModelOverrides?: AdviceFilters['llmModelOverrides'];
+  }) =>
+    this.post<{ runId: string; topicIndex: number; topic: AdviceRunResult['topics'][number] }>('/advice/refine', body);
+  adviceLibrary = () => this.get<AdviceLibraryItem[]>('/advice/library');
+  workspaceCatalog = () => this.get<WorkspaceCatalog>('/workspace/catalog');
+  workspacePlan = (planVersionId: string) => this.get<WorkspacePlanDetail>(`/workspace/plans/${planVersionId}`);
+  workspaceResearch = (projectId: string) => this.get<WorkspaceResearchDetail>(`/workspace/research/${projectId}`);
+  workspaceScript = (projectId: string) => this.get<WorkspaceScriptDetail>(`/workspace/scripts/${projectId}`);
   genres = () => this.get<Genre[]>('/genres');
   createGenre = (body: { name: string; focus: string; status?: 'approved' | 'new' }) => this.post<Genre>('/genres', body);
   updateGenre = (id: string, body: Partial<Pick<Genre, 'name' | 'focus' | 'status' | 'promptModule'>>) => this.patch<Genre>(`/genres/${id}`, body);
@@ -94,12 +111,29 @@ export class Api {
   planVersions = (projectId: string) => this.get<PlanVersion[]>(`/projects/${projectId}/plan`);
   generatePlan = (projectId: string) => this.post<PlanVersion>(`/projects/${projectId}/plan/generate`);
   refinePlan = (projectId: string, feedback: string) => this.post<PlanVersion>(`/projects/${projectId}/plan/refine`, { feedback });
+  refinePlanChapter = (projectId: string, order: number, feedback: string) =>
+    this.post<PlanVersion>(`/projects/${projectId}/plan/chapters/${order}/refine`, { feedback });
+  retryPlanChapter = (projectId: string, order: number, feedback?: string) =>
+    this.post<PlanVersion>(`/projects/${projectId}/plan/chapters/${order}/retry`, { feedback: feedback?.trim() || undefined });
+  addPlanChapter = (
+    projectId: string,
+    body: { insertAfter: number; description: string; lengthMin: number; title?: string },
+  ) => this.post<PlanVersion>(`/projects/${projectId}/plan/chapters/add`, body);
+  refineAllPlanChapters = (projectId: string) => this.post<PlanVersion>(`/projects/${projectId}/plan/refine-all`);
+  savePlan = (projectId: string, body: import('@youtube-ai-tool/shared').PlanDraft) =>
+    this.put<PlanVersion>(`/projects/${projectId}/plan`, body);
+  rescalePlanToTarget = (projectId: string) => this.post<PlanVersion>(`/projects/${projectId}/plan/rescale-target`);
   approvePlan = (projectId: string) => this.post<unknown>(`/projects/${projectId}/plan/approve`);
 
   facts = (projectId: string) => this.get<FactResearchState>(`/projects/${projectId}/facts`);
   refineFacts = (projectId: string, feedback: string, chapterOrder?: number) =>
     this.post<unknown>(`/projects/${projectId}/facts/refine`, { feedback, chapterOrder });
   retryFacts = (projectId: string) => this.post<unknown>(`/projects/${projectId}/facts/retry`);
+  retryFactsBatch = (projectId: string) => this.post<unknown>(`/projects/${projectId}/facts/retry-batch`);
+  retryFact = (projectId: string, factId: string, feedback?: string) =>
+    this.post<unknown>(`/projects/${projectId}/facts/${factId}/retry`, { feedback: feedback?.trim() || undefined });
+  refineFact = (projectId: string, factId: string, feedback: string) =>
+    this.post<unknown>(`/projects/${projectId}/facts/${factId}/refine`, { feedback });
   addFact = (projectId: string, body: { planChapterOrder: number; text: string; sourceUrl: string }) =>
     this.post<unknown>(`/projects/${projectId}/facts`, body);
   deleteFact = (projectId: string, factId: string) => this.delete<void>(`/projects/${projectId}/facts/${factId}`);
@@ -113,6 +147,11 @@ export class Api {
   approveChapter = (projectId: string, order: number) => this.post<unknown>(`/projects/${projectId}/script/chapters/${order}/approve`);
   finalizeScript = (projectId: string) => this.post<unknown>(`/projects/${projectId}/script/finalize`);
   exportScript = (projectId: string) => this.text(`/projects/${projectId}/script/export`);
+  scriptFullText = (projectId: string) => this.get<{ fullText: string }>(`/projects/${projectId}/script/full-text`);
+  saveScriptFullText = (projectId: string, fullText: string) =>
+    this.put<unknown>(`/projects/${projectId}/script/full-text`, { fullText });
+  refineScriptSnippet = (projectId: string, fragment: string, instructions: string) =>
+    this.post<{ text: string }>(`/projects/${projectId}/script/snippet-refine`, { fragment, instructions });
 
   checkSubtitles = (url: string) => this.post<SubtitleCheck>('/subtitles/check', { url });
   fetchSubtitles = (body: { url: string; confirmTitleMismatch?: boolean; confirmAddVideo?: boolean; confirmOverwrite?: boolean }) =>

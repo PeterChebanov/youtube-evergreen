@@ -16,7 +16,15 @@ import { ConfigService } from '@nestjs/config';
 import { z } from 'zod';
 import { appConfig, AppConfig } from '../../config/app.config';
 import { PROMPT_NAMES, PromptName } from '../llm/prompt-names';
-import { DB_PRIORITY_FILE, PromptsService, RETENTION_BASE_FILE } from './prompts.service';
+import {
+  DB_PRIORITY_FILE,
+  FACT_GEOGRAPHY_FILE,
+  FACT_RECENCY_FILE,
+  NARRATIVE_EDITORIAL_FILE,
+  NARRATIVE_GEOGRAPHY_GLOBAL_FILE,
+  PromptsService,
+  RETENTION_BASE_FILE,
+} from './prompts.service';
 
 const OUTPUT: Partial<Record<PromptName, z.ZodTypeAny>> = {
   video_basic: videoBasicBatchSchema,
@@ -54,6 +62,10 @@ describe('prompt files', () => {
   it('ships the shared retention base and database fragment', async () => {
     expect(await prompts.file(RETENTION_BASE_FILE)).toMatch(/riddle/i);
     expect(await prompts.file(DB_PRIORITY_FILE)).toContain('dbDataUsed');
+    expect(await prompts.file(FACT_GEOGRAPHY_FILE)).toMatch(/United States/i);
+    expect(await prompts.file(FACT_RECENCY_FILE)).toMatch(/referenceDate/i);
+    expect(await prompts.file(NARRATIVE_EDITORIAL_FILE)).toMatch(/70%/);
+    expect(await prompts.file(NARRATIVE_GEOGRAPHY_GLOBAL_FILE)).toMatch(/40%/);
   });
 
   it('fails loudly when a prompt file is missing', async () => {

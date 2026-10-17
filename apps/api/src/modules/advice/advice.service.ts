@@ -1,22 +1,28 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
   adviceDraftSchema,
+  adviceFiltersSchema,
+  adviceRunStoredSchema,
+  adviceTopicDraftSchema,
   type AdviceFilters,
   type AdviceRunResult,
   type AdviceTopic,
   DEFAULT_PERIOD,
   describePeriod,
+  isProjectStatus,
   resolvePeriod,
 } from '@youtube-ai-tool/shared';
-import { conflict, errorMessage } from '../../common/domain-error';
+import { conflict, errorMessage, invalid, orNotFound } from '../../common/domain-error';
 import { maxSimilarity } from '../../common/vector';
 import { EmbeddingRepository } from '../../prisma/embedding.repository';
+import type { AdviceRun } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StatsRepository } from '../../prisma/stats.repository';
 import { AnalysisService } from '../analysis/analysis.service';
 import { LlmContextService } from '../llm/llm-context.service';
 import { LlmService } from '../llm/llm.service';
 import { PromptComposer } from '../prompts/prompt-composer.service';
+import { parseAdviceRunResults, reconcileTopicProjects } from './advice-run-results';
 import { DUPLICATE_SIMILARITY, rankCandidates } from './candidates';
 
 const POOL_LIMIT = 600;
@@ -168,13 +174,178 @@ export class AdviceService {
       };
     });
     const warnings = await this.duplicateWarnings(topics, myVideos);
-    const run = await this.prisma.adviceRun.create({ data: { filters, results: { topics, warnings } } });
+    const run = await this.prisma.adviceRun.create({ data: { filters, results: { topics, warnings, topicProjects: {} } } });
     return { runId: run.id, topics, warnings };
+  }
+
+  /** Adjust one Advice topic before it becomes a project (author notes on chapters and angle). */
+  async refineTopic(
+    runId: string,
+    topicIndex: number,
+    feedback: string,
+    llmModelOverrides?: AdviceFilters['llmModelOverrides'],
+  ): Promise<{ runId: string; topicIndex: number; topic: AdviceTopic }> {
+    const run = orNotFound(await this.prisma.adviceRun.findUnique({ where: { id: runId } }), 'Advice run');
+    const raw = adviceRunStoredSchema.parse(run.results);
+    const ids = new Set([...Object.values(raw.topicProjects), ...(run.projectId ? [run.projectId] : [])]);
+    const projects = ids.size
+      ? await this.prisma.project.findMany({ where: { id: { in: [...ids] } }, select: { id: true, title: true, topic: true } })
+      : [];
+    const stored = this.resolveRunStored(run, new Map(projects.map((p) => [p.id, p])));
+    if (stored.topicProjects[String(topicIndex)]) {
+      throw conflict('This Advice topic is already linked to a project');
+    }
+    const previous = stored.topics[topicIndex];
+    if (!previous) throw invalid(`Topic index ${topicIndex} is out of range`);
+    const filters = adviceFiltersSchema.parse(run.filters);
+
+    const { data } = await this.llmContext.withRunOverrides(llmModelOverrides ?? {}, async () =>
+      this.llm.completeStructured({
+        promptName: 'advice',
+        stageId: 'advice',
+        system: await this.composer.advice(filters.genreIds),
+        user: {
+          mode: 'refine',
+          language: filters.language,
+          targetDurationMin: filters.targetDurationMin,
+          previousTopic: {
+            type: previous.type,
+            title: previous.title,
+            topic: previous.topic,
+            subtopic: previous.subtopic ?? null,
+            genre: previous.genre ?? null,
+            rationale: previous.rationale,
+            sourceVideoIds: previous.sourceVideoIds,
+            draftChapters: previous.draftChapters,
+            riddle: previous.riddle,
+          },
+          feedback,
+        },
+        schema: adviceTopicDraftSchema,
+      }),
+    );
+
+    const videos = await this.prisma.video.findMany({
+      where: { id: { in: data.sourceVideoIds } },
+      select: {
+        id: true,
+        title: true,
+        durationSec: true,
+        viewsAtResearch: true,
+        publishedAt: true,
+        channel: { select: { channelName: true } },
+      },
+    });
+    const byId = new Map(videos.map((v) => [v.id, v]));
+    const sourceVideoIds = data.sourceVideoIds.filter((id) => byId.has(id));
+    if (!sourceVideoIds.length) throw conflict('The refined topic must reference at least one library video');
+    const topic: AdviceTopic = {
+      ...data,
+      sourceVideoIds,
+      sources: sourceVideoIds.map((id) => {
+        const v = byId.get(id)!;
+        const prevSource = previous.sources.find((s) => s.videoId === id);
+        return {
+          videoId: id,
+          title: v.title,
+          channelName: v.channel.channelName,
+          views: v.viewsAtResearch,
+          durationSec: v.durationSec,
+          publishedAt: v.publishedAt.toISOString(),
+          velocityPerDay: prevSource?.velocityPerDay ?? 0,
+          relativeSuccess: prevSource?.relativeSuccess ?? 0,
+        };
+      }),
+    };
+
+    const topics = stored.topics.slice();
+    topics[topicIndex] = topic;
+    await this.prisma.adviceRun.update({
+      where: { id: runId },
+      data: { results: { ...stored, topics } },
+    });
+    return { runId, topicIndex, topic };
   }
 
   async history() {
     const runs = await this.prisma.adviceRun.findMany({ orderBy: { createdAt: 'desc' }, take: 20 });
     return runs.map((r) => ({ runId: r.id, projectId: r.projectId, createdAt: r.createdAt.toISOString(), filters: r.filters, ...(r.results as object) }));
+  }
+
+  /** Every Advice topic ever generated (never deleted); pipeline stage comes from linked project. */
+  async library() {
+    const runs = await this.prisma.adviceRun.findMany({ orderBy: { createdAt: 'desc' } });
+    const linkedIds = new Set<string>();
+    for (const run of runs) {
+      const raw = adviceRunStoredSchema.safeParse(run.results);
+      if (raw.success) {
+        for (const id of Object.values(raw.data.topicProjects)) linkedIds.add(id);
+      }
+      if (run.projectId) linkedIds.add(run.projectId);
+    }
+    const linkedProjects = linkedIds.size
+      ? await this.prisma.project.findMany({
+          where: { id: { in: [...linkedIds] } },
+          select: { id: true, title: true, topic: true, status: true },
+        })
+      : [];
+    const projectsById = new Map(linkedProjects.map((p) => [p.id, p]));
+
+    const projectIds = new Set<string>();
+    for (const run of runs) {
+      try {
+        const stored = this.resolveRunStored(run, projectsById);
+        for (const id of Object.values(stored.topicProjects)) projectIds.add(id);
+      } catch {
+        /* skip corrupt rows */
+      }
+    }
+    const projects = await this.prisma.project.findMany({
+      where: { id: { in: [...projectIds] } },
+      select: { id: true, status: true, title: true },
+    });
+    const statusById = new Map(projects.map((p) => [p.id, p.status]));
+    const titleById = new Map(projects.map((p) => [p.id, p.title]));
+
+    return runs.flatMap((run) => {
+      let stored;
+      try {
+        stored = this.resolveRunStored(run, projectsById);
+      } catch {
+        return [];
+      }
+      const createdAt = run.createdAt.toISOString();
+      return stored.topics.map((topic, topicIndex) => {
+        const projectId = stored.topicProjects[String(topicIndex)] ?? null;
+        const rawStatus = projectId ? statusById.get(projectId) : null;
+        return {
+          id: `${run.id}:${topicIndex}`,
+          runId: run.id,
+          topicIndex,
+          createdAt,
+          type: topic.type,
+          title: topic.title,
+          topic: topic.topic,
+          rationale: topic.rationale,
+          riddle: topic.riddle,
+          genre: topic.genre,
+          draftChapters: topic.draftChapters ?? [],
+          projectId,
+          projectTitle: projectId ? (titleById.get(projectId) ?? null) : null,
+          projectStatus: rawStatus && isProjectStatus(rawStatus) ? rawStatus : null,
+        };
+      });
+    });
+  }
+
+  private resolveRunStored(
+    run: Pick<AdviceRun, 'results' | 'projectId'>,
+    projectsById: Map<string, { title: string; topic: string | null }>,
+  ) {
+    const legacy = run.projectId ? projectsById.get(run.projectId) ?? null : null;
+    const parsed = parseAdviceRunResults(run, legacy);
+    const ids = [...Object.values(parsed.topicProjects), ...(run.projectId ? [run.projectId] : [])];
+    return reconcileTopicProjects(parsed, ids, projectsById);
   }
 
   /** Final check against My Videos on the proposed wording (REQUIREMENTS 2.5, Q4). */

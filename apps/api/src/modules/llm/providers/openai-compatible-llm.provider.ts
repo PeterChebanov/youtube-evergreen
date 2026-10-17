@@ -25,6 +25,18 @@ function toOpenAi(m: LlmMessage): ChatCompletionMessageParam {
   }
 }
 
+function isResponseFormatRejected(e: unknown): boolean {
+  if (!(e instanceof OpenAI.APIError) || e.status !== 400) return false;
+  const msg = String(e.message ?? '').toLowerCase();
+  return (
+    msg.includes('response_format') ||
+    msg.includes('json_schema') ||
+    msg.includes('json_object') ||
+    msg.includes('invalid schema') ||
+    msg.includes('invalid request')
+  );
+}
+
 function parseArgs(raw: string): Record<string, unknown> {
   try {
     const v = JSON.parse(raw || '{}');
@@ -45,10 +57,38 @@ export class OpenAiCompatibleLlmProvider implements LlmProvider {
   }
 
   async chat(req: LlmChatRequest): Promise<LlmChatResponse> {
+    const hasTools = !!(req.tools?.length);
+    const responseFormat = this.responseFormat(req, hasTools);
+    try {
+      return await this.create(req, responseFormat);
+    } catch (e) {
+      if (responseFormat && isResponseFormatRejected(e)) return this.create(req, undefined);
+      throw e;
+    }
+  }
+
+  private responseFormat(req: LlmChatRequest, hasTools: boolean) {
+    if (hasTools) return undefined;
+    if (req.structuredSchema) {
+      return {
+        type: 'json_schema' as const,
+        json_schema: {
+          name: req.structuredSchema.name,
+          schema: req.structuredSchema.schema,
+        },
+      };
+    }
+    return this.jsonMode ? ({ type: 'json_object' as const } as const) : undefined;
+  }
+
+  private async create(
+    req: LlmChatRequest,
+    responseFormat: { type: 'json_schema'; json_schema: { name: string; schema: Record<string, unknown> } } | { type: 'json_object' } | undefined,
+  ): Promise<LlmChatResponse> {
     const res = await this.client.chat.completions.create({
       model: req.model,
       messages: req.messages.map(toOpenAi),
-      ...(this.jsonMode ? { response_format: { type: 'json_object' as const } } : {}),
+      ...(responseFormat ? { response_format: responseFormat } : {}),
       ...(req.tools?.length
         ? {
             tools: req.tools.map((t) => ({

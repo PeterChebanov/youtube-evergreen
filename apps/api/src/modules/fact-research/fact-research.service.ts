@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   CHAPTER_WORK_STATES,
+  FACT_EDIT_STATUSES,
   factExtractSchema,
   researchQueriesSchema,
   type FactDto,
@@ -14,7 +15,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { DbToolsService } from '../db-tools/db-tools.service';
 import { LlmService } from '../llm/llm.service';
 import { ProjectsService } from '../projects/projects.service';
-import { PromptComposer } from '../prompts/prompt-composer.service';
+import { projectContext, PromptComposer } from '../prompts/prompt-composer.service';
 import { QUEUES, QueueService } from '../queue/queue.service';
 import { SearchService } from '../search/search.service';
 import { acceptFacts } from './fact-policy';
@@ -25,12 +26,17 @@ const ACTIVE = ['queued', 'running'];
 export const factJobPayloadSchema = z.object({
   projectId: z.string(),
   feedback: z.string().nullable(),
+  appendOnly: z.boolean().optional(),
   chapters: z.array(z.object({ order: z.number(), state: z.enum(CHAPTER_WORK_STATES), error: z.string().optional() })),
 });
 export type FactJobPayload = z.infer<typeof factJobPayloadSchema>;
 export type FactJobData = { jobRecordId: string };
 
 const relationsSchema = z.array(z.object({ factId: z.string(), kind: z.string() }));
+
+function researchReferenceDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 function toFactDto(f: ResearchFact): FactDto {
   return {
@@ -66,7 +72,7 @@ export class FactResearchService {
 
   /** Refine all chapters or one: drop weak facts and look for others (REQUIREMENTS 4.5). */
   async refine(projectId: string, feedback: string, chapterOrder?: number): Promise<FactResearchState> {
-    await this.projects.assertStatus(projectId, ['researching']);
+    await this.projects.assertStatus(projectId, [...FACT_EDIT_STATUSES]);
     const { content } = await this.projects.latestPlan(projectId);
     const orders = chapterOrder ? [chapterOrder] : content.chapters.map((c) => c.order);
     if (chapterOrder && !content.chapters.some((c) => c.order === chapterOrder)) throw notFound(`Plan chapter ${chapterOrder}`);
@@ -75,7 +81,7 @@ export class FactResearchService {
   }
 
   async addFact(projectId: string, input: { planChapterOrder: number; text: string; sourceUrl: string; sourceTitle?: string }): Promise<FactDto> {
-    await this.projects.assertStatus(projectId, ['researching']);
+    await this.projects.assertStatus(projectId, [...FACT_EDIT_STATUSES]);
     const { content } = await this.projects.latestPlan(projectId);
     if (!content.chapters.some((c) => c.order === input.planChapterOrder)) throw notFound(`Plan chapter ${input.planChapterOrder}`);
     const last = await this.prisma.researchFact.findFirst({
@@ -89,7 +95,7 @@ export class FactResearchService {
   }
 
   async deleteFact(projectId: string, factId: string): Promise<void> {
-    await this.projects.assertStatus(projectId, ['researching']);
+    await this.projects.assertStatus(projectId, [...FACT_EDIT_STATUSES]);
     const fact = await this.prisma.researchFact.findFirst({ where: { id: factId, projectId } });
     orNotFound(fact, 'Fact');
     await this.prisma.researchFact.delete({ where: { id: factId } });
@@ -97,7 +103,7 @@ export class FactResearchService {
 
   /** "Send to writer" (REQUIREMENTS 4.6). */
   async approve(projectId: string): Promise<FactResearchState> {
-    await this.projects.assertStatus(projectId, ['researching']);
+    await this.projects.assertStatus(projectId, [...FACT_EDIT_STATUSES]);
     if (await this.activeJob(projectId)) throw conflict('Fact research is still running');
     if (!(await this.prisma.researchFact.count({ where: { projectId } }))) throw conflict('There are no facts to hand to the writer');
     await this.projects.transition(projectId, 'research_approved');
@@ -139,7 +145,7 @@ export class FactResearchService {
       delete chapter.error;
       await this.saveJob(job.id, payload, {});
       try {
-        await this.researchChapter(project, content, chapter.order, payload.feedback);
+        await this.researchChapter(project, content, chapter.order, payload.feedback, payload.appendOnly ?? false);
         chapter.state = 'done';
       } catch (e) {
         chapter.state = 'failed';
@@ -155,7 +161,7 @@ export class FactResearchService {
   }
 
   async retry(projectId: string): Promise<FactResearchState> {
-    await this.projects.assertStatus(projectId, ['researching']);
+    await this.projects.assertStatus(projectId, [...FACT_EDIT_STATUSES]);
     const job = await this.latestJob(projectId);
     if (!job || job.status !== 'failed') throw conflict('There is no failed fact research to retry');
     await this.prisma.jobRecord.update({ where: { id: job.id }, data: { status: 'queued', error: null } });
@@ -163,19 +169,71 @@ export class FactResearchService {
     return this.state(projectId);
   }
 
-  private async researchChapter(project: Project, plan: PlanContent, order: number, feedback: string | null) {
+  /** Drop all facts and research every chapter again from scratch. */
+  async retryBatch(projectId: string): Promise<FactResearchState> {
+    await this.projects.assertStatus(projectId, [...FACT_EDIT_STATUSES]);
+    const { content } = await this.projects.latestPlan(projectId);
+    await this.prisma.researchFact.deleteMany({ where: { projectId } });
+    await this.enqueue(projectId, content.chapters.map((c) => c.order), null);
+    return this.state(projectId);
+  }
+
+  /** @deprecated use retryBatch */
+  async retryBench(projectId: string): Promise<FactResearchState> {
+    return this.retryBatch(projectId);
+  }
+
+  async retryOneFact(projectId: string, factId: string, userNotes?: string): Promise<FactResearchState> {
+    await this.projects.assertStatus(projectId, [...FACT_EDIT_STATUSES]);
+    const fact = orNotFound(await this.prisma.researchFact.findFirst({ where: { id: factId, projectId } }), 'Fact');
+    const others = await this.prisma.researchFact.findMany({
+      where: { projectId, planChapterOrder: fact.planChapterOrder, id: { not: factId } },
+    });
+    await this.prisma.researchFact.delete({ where: { id: factId } });
+    const keep = others.map((f) => f.text).join('; ') || '(none yet)';
+    const extra = userNotes?.trim() ? ` Author direction: ${userNotes.trim()}.` : '';
+    const feedback = `Find exactly one new verifiable fact for this chapter. Do not repeat or paraphrase facts already kept: ${keep}. Replace this removed fact with a different angle: ${fact.text}.${extra}`;
+    await this.enqueue(projectId, [fact.planChapterOrder], feedback, { appendOnly: true });
+    return this.state(projectId);
+  }
+
+  async refineOneFact(projectId: string, factId: string, userFeedback: string): Promise<FactResearchState> {
+    await this.projects.assertStatus(projectId, [...FACT_EDIT_STATUSES]);
+    const fact = orNotFound(await this.prisma.researchFact.findFirst({ where: { id: factId, projectId } }), 'Fact');
+    const others = await this.prisma.researchFact.findMany({
+      where: { projectId, planChapterOrder: fact.planChapterOrder, id: { not: factId } },
+    });
+    await this.prisma.researchFact.delete({ where: { id: factId } });
+    const keep = others.map((f) => f.text).join('; ') || '(none)';
+    const feedback = `Return exactly one refined fact to replace the removed one. Previous fact: ${fact.text}. Author instructions (what to add, remove, or change): ${userFeedback.trim()}. Other facts in this chapter stay as they are — do not repeat them: ${keep}`;
+    await this.enqueue(projectId, [fact.planChapterOrder], feedback, { appendOnly: true });
+    return this.state(projectId);
+  }
+
+  private async researchChapter(project: Project, plan: PlanContent, order: number, feedback: string | null, appendOnly = false) {
     const chapter = plan.chapters.find((c) => c.order === order);
     if (!chapter) throw new Error('chapter is not in the plan');
     const existing = await this.prisma.researchFact.findMany({ where: { projectId: project.id, planChapterOrder: order } });
     const useDatabase = await this.dbTools.shouldUse(feedback ?? '', project.useDatabase);
     const chapterBrief = { order, title: chapter.title, description: chapter.description, subpoints: chapter.subpoints };
+    const referenceDate = researchReferenceDate();
+    const factResearchLayers = { factGeography: true, factRecency: true } as const;
 
     const { data: q } = await this.llm.completeStructured({
       promptName: 'research_queries',
       stageId: 'fact_research_queries',
       projectId: project.id,
-      system: await this.composer.research('research_queries', project, useDatabase),
-      user: { mode: 'global', topic: project.topic ?? project.title, language: project.language, riddle: plan.riddle.question, chapter: chapterBrief, feedback, knownFacts: existing.map((f) => f.text) },
+      system: await this.composer.research('research_queries', projectContext(project), useDatabase, factResearchLayers),
+      user: {
+        mode: 'global',
+        topic: project.topic ?? project.title,
+        language: project.language,
+        riddle: plan.riddle.question,
+        chapter: chapterBrief,
+        referenceDate,
+        feedback,
+        knownFacts: existing.map((f) => f.text),
+      },
       schema: researchQueriesSchema,
       tools: useDatabase ? this.dbTools.toolSet() : undefined,
     });
@@ -186,16 +244,26 @@ export class FactResearchService {
       promptName: 'fact_extract',
       stageId: 'fact_extract',
       projectId: project.id,
-      system: await this.composer.research('fact_extract', project, false),
-      user: { chapter: chapterBrief, feedback, previousFacts: feedback ? existing.map((f) => ({ text: f.text, sourceUrl: f.sourceUrl })) : [], sources: sources.map((s, index) => ({ index, ...s })) },
+      system: await this.composer.research('fact_extract', projectContext(project), false, factResearchLayers),
+      user: {
+        chapter: chapterBrief,
+        referenceDate,
+        feedback,
+        singleFact: appendOnly,
+        previousFacts: feedback ? existing.map((f) => ({ text: f.text, sourceUrl: f.sourceUrl })) : [],
+        sources: sources.map((s, index) => ({ index, ...s })),
+      },
       schema: factExtractSchema,
     });
-    const accepted = acceptFacts(data.facts, sources);
+    let accepted = acceptFacts(data.facts, sources);
+    if (appendOnly) accepted = accepted.slice(0, 1);
     if (!accepted.length) throw new Error('no facts with a verifiable source were found');
 
-    const iteration = Math.max(0, ...existing.map((f) => f.iteration)) + 1;
+    const iteration = appendOnly
+      ? Math.max(1, ...existing.map((f) => f.iteration))
+      : Math.max(0, ...existing.map((f) => f.iteration)) + 1;
     await this.prisma.$transaction(async (tx) => {
-      await tx.researchFact.deleteMany({ where: { projectId: project.id, planChapterOrder: order } });
+      if (!appendOnly) await tx.researchFact.deleteMany({ where: { projectId: project.id, planChapterOrder: order } });
       const created: ResearchFact[] = [];
       for (const f of accepted) {
         created.push(
@@ -214,9 +282,14 @@ export class FactResearchService {
     });
   }
 
-  private async enqueue(projectId: string, orders: number[], feedback: string | null) {
+  private async enqueue(projectId: string, orders: number[], feedback: string | null, opts?: { appendOnly?: boolean }) {
     if (await this.activeJob(projectId)) throw conflict('Fact research for this project is already running');
-    const payload: FactJobPayload = { projectId, feedback, chapters: orders.map((order) => ({ order, state: 'queued' })) };
+    const payload: FactJobPayload = {
+      projectId,
+      feedback,
+      appendOnly: opts?.appendOnly,
+      chapters: orders.map((order) => ({ order, state: 'queued' })),
+    };
     const job = await this.prisma.jobRecord.create({ data: { type: FACT_JOB, status: 'queued', total: orders.length, payload } });
     await this.queue.add<FactJobData>(QUEUES.facts, { jobRecordId: job.id });
   }

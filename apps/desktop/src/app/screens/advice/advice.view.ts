@@ -1,5 +1,19 @@
+import { hasReached, type ProjectStatus } from '@youtube-ai-tool/shared';
 import type { AdviceTopic } from '../../core/api.types';
 import { formatCompact } from '../../core/format';
+
+export type PipelineStage = { id: 'plan' | 'facts' | 'writer'; label: string; done: boolean };
+
+const PIPELINE: Array<{ id: PipelineStage['id']; label: string; target: ProjectStatus }> = [
+  { id: 'plan', label: 'Plan', target: 'plan_approved' },
+  { id: 'facts', label: 'Facts', target: 'research_approved' },
+  { id: 'writer', label: 'Writer', target: 'done' },
+];
+
+export function pipelineStages(status: ProjectStatus | null): PipelineStage[] {
+  if (!status) return PIPELINE.map((s) => ({ id: s.id, label: s.label, done: false }));
+  return PIPELINE.map((s) => ({ id: s.id, label: s.label, done: hasReached(status, s.target) }));
+}
 
 /** The Source column: what the topic is built on (DESIGN_SPEC 6.2). */
 export function sourceCell(topic: AdviceTopic): { line: string; sub: string } {

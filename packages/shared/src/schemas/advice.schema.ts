@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import { periodFilterSchema } from '../advice/period';
+import { targetDurationMinSchema } from '../video/target-duration';
 import { llmModelOverridesSchema } from '../llm/overrides-schema';
+import { PROJECT_STATUSES } from '../projects/project-status';
 
-const adviceTopicDraftSchema = z.object({
+export const adviceTopicDraftSchema = z.object({
   type: z.enum(['rework', 'analog']),
   title: z.string().min(1),
   topic: z.string().min(1),
@@ -32,7 +34,7 @@ export const adviceFiltersSchema = z.object({
   theme: z.string().optional(),
   skipMyVideos: z.boolean().default(true),
   language: z.enum(['ru', 'en']).default('ru'),
-  targetDurationMin: z.number().int().min(30).max(90).default(52),
+  targetDurationMin: targetDurationMinSchema.default(52),
   llmModelOverrides: llmModelOverridesSchema.optional(),
 });
 
@@ -61,3 +63,36 @@ export const adviceRunResultSchema = z.object({
 
 export type AdviceTopic = z.infer<typeof adviceTopicSchema>;
 export type AdviceRunResult = z.infer<typeof adviceRunResultSchema>;
+
+/** Persisted JSON on AdviceRun (topics plus optional project link per index). */
+export const adviceRunStoredSchema = z.object({
+  topics: z.array(adviceTopicSchema).min(1),
+  warnings: z.array(z.string()).default([]),
+  topicProjects: z.record(z.string(), z.string()).default({}),
+});
+
+export type AdviceRunStored = z.infer<typeof adviceRunStoredSchema>;
+
+const adviceDraftChapterSchema = z.object({
+  title: z.string(),
+  subIdeas: z.array(z.string()).default([]),
+});
+
+export const adviceLibraryItemSchema = z.object({
+  id: z.string(),
+  runId: z.string(),
+  topicIndex: z.number().int().min(0),
+  createdAt: z.string(),
+  type: z.enum(['rework', 'analog']),
+  title: z.string(),
+  topic: z.string(),
+  rationale: z.string(),
+  riddle: z.string(),
+  genre: z.string().optional(),
+  draftChapters: z.array(adviceDraftChapterSchema).default([]),
+  projectId: z.string().nullable(),
+  projectTitle: z.string().nullable(),
+  projectStatus: z.enum(PROJECT_STATUSES).nullable(),
+});
+
+export type AdviceLibraryItem = z.infer<typeof adviceLibraryItemSchema>;

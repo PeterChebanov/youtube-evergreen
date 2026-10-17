@@ -18,11 +18,16 @@ export const PROMPT_FILES: Record<PromptName, string> = {
   fact_extract: 'fact-extract.md',
   writer: 'writer-base.md',
   writer_refine: 'writer-refine.md',
+  writer_snippet_refine: 'writer-snippet-refine.md',
   chapter_summary: 'chapter-summary.md',
 };
 
 export const RETENTION_BASE_FILE = 'retention-base.md';
 export const DB_PRIORITY_FILE = 'fragments/db-priority.md';
+export const FACT_GEOGRAPHY_FILE = 'fragments/fact-geography.md';
+export const FACT_RECENCY_FILE = 'fragments/fact-recency.md';
+export const NARRATIVE_EDITORIAL_FILE = 'fragments/narrative-editorial.md';
+export const NARRATIVE_GEOGRAPHY_GLOBAL_FILE = 'fragments/narrative-geography-global.md';
 
 /** Reads versioned prompt files; a missing file is a deployment error, never silently replaced. */
 @Injectable()

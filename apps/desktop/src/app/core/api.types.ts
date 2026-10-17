@@ -2,6 +2,7 @@ import type { PlanContent, SubtitleCheck } from '@youtube-ai-tool/shared';
 
 export type {
   AdviceFilters,
+  AdviceLibraryItem,
   AdviceRunResult,
   AdviceTopic,
   ChannelDetail,
@@ -17,6 +18,10 @@ export type {
   SubtitleCheck,
   TopicMemory,
   UpdateProjectRequest,
+  WorkspaceCatalog,
+  WorkspacePlanDetail,
+  WorkspaceResearchDetail,
+  WorkspaceScriptDetail,
   WriterState,
   SearchOption,
   LlmDefaults,

@@ -1,5 +1,6 @@
 Every plan and chapter keeps the viewer through a funnel of interest:
 
+- Spoken narration mix: ~70% scenes, actions, and stakes; ~25% explanation that pays off a planted question. Never slide into list-like encyclopedia voice.
 - Open with a scene or a paradox, not with context. The first minute promises a reward the viewer cannot get elsewhere.
 - One central riddle is planted early and answered late; smaller questions open and close inside chapters, so a reward is never far away.
 - Alternate tension and release: a question, a delay, a surprising answer that raises a bigger question.

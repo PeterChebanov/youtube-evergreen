@@ -57,7 +57,11 @@ export class ProjectStore {
 
   async refresh() {
     try {
-      this.projects.set(await this.api.projects());
+      const rows = await this.api.projects();
+      const byId = new Map<string, ProjectDto>();
+      for (const p of rows) byId.set(p.id, p);
+      this.projects.set([...byId.values()]);
+      if (this.currentId() && !byId.has(this.currentId()!)) this.leave();
       this.error.set(null);
     } catch (e) {
       this.error.set(errorText(e));
@@ -68,6 +72,11 @@ export class ProjectStore {
     this.currentId.set(id);
     if (id) localStorage.setItem(PROJECT_KEY, id);
     else localStorage.removeItem(PROJECT_KEY);
+  }
+
+  /** Exit project context (Advice / library screens, no active project). */
+  leave() {
+    this.select(null);
   }
 
   /** Keeps the list in sync after an action returned a fresh project. */

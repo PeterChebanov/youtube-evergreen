@@ -11,7 +11,12 @@ const API_DIR = path.resolve(__dirname, '..', '..', 'api');
 const API_ENTRY = path.join(API_DIR, 'dist', 'main.js');
 const HEALTH_TIMEOUT_MS = 30_000;
 
+/** Manual opt-in only: `electron . --new-window` or EVERGREEN_NEW_WINDOW=1 */
+const ALLOW_SECOND_INSTANCE =
+  process.argv.includes('--new-window') || process.env.EVERGREEN_NEW_WINDOW === '1';
+
 let apiProcess = null;
+let mainWindow = null;
 
 async function apiIsUp() {
   try {
@@ -56,7 +61,7 @@ async function ensureApi() {
 }
 
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1280,
     height: 820,
     minWidth: 1100,
@@ -70,26 +75,55 @@ function createWindow() {
       additionalArguments: [`--evergreen-api=${API_URL}`],
     },
   });
-  win.webContents.setWindowOpenHandler(({ url }) => {
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//.test(url)) void shell.openExternal(url);
     return { action: 'deny' };
   });
-  if (UI_URL) void win.loadURL(UI_URL);
-  else void win.loadFile(path.resolve(__dirname, '..', 'dist', 'browser', 'index.html'));
+  if (UI_URL) void mainWindow.loadURL(UI_URL);
+  else void mainWindow.loadFile(path.resolve(__dirname, '..', 'dist', 'browser', 'index.html'));
+  return mainWindow;
 }
 
-app.whenReady().then(async () => {
-  await ensureApi();
-  createWindow();
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+function focusMainWindow() {
+  if (!mainWindow) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+function startApp() {
+  app.whenReady().then(async () => {
+    await ensureApi();
+    createWindow();
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+      else focusMainWindow();
+    });
   });
-});
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-});
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
+  });
 
-app.on('before-quit', () => {
-  apiProcess?.kill();
-});
+  app.on('before-quit', () => {
+    apiProcess?.kill();
+  });
+}
+
+if (!ALLOW_SECOND_INSTANCE) {
+  const gotLock = app.requestSingleInstanceLock();
+  if (!gotLock) {
+    console.info('Evergreen Studio is already running. Close it first, or pass --new-window to open another.');
+    app.quit();
+  } else {
+    app.on('second-instance', () => {
+      focusMainWindow();
+    });
+    startApp();
+  }
+} else {
+  startApp();
+}

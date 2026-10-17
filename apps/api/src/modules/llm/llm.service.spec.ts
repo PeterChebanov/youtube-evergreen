@@ -71,6 +71,7 @@ describe('LlmService.completeStructured', () => {
       },
     };
     await expect(ask(service, tools)).resolves.toEqual({ data: { answer: 7 }, dbToolsUsed: ['find_videos'] });
+    expect(requests[0].structuredSchema).toBeUndefined();
     expect(executed).toEqual([{ query: 'ussr' }]);
     expect(requests[1].messages.at(-1)).toEqual({ role: 'tool', toolCallId: 't1', content: '[{"id":"v1"}]' });
     expect(logged[0]).toMatchObject({ dbToolsUsed: ['find_videos'] });

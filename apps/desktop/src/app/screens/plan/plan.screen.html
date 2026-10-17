@@ -1,7 +1,10 @@
+<es-workspace-library kind="plan" />
+
 @if (project(); as p) {
   <div class="page-head">
     <div>
-      <h1>Plan · {{ p.title }}</h1>
+      <es-project-tag [title]="p.title" />
+      <h1>Plan</h1>
       <p class="sub">{{ subtitle() }}</p>
     </div>
     <div class="actions">
@@ -13,14 +16,31 @@
             }
           </select> ▾</label>
       }
-      <button class="btn btn-primary" type="button" [disabled]="!editable() || !versions()?.length || !!busy() || approving()" (click)="approve()">Send to research</button>
+      @if (showEditUnlock()) {
+        <button class="btn" type="button" [disabled]="!!busy()" (click)="unlockEdit()">Edit plan</button>
+      }
+      @if (showApprove()) {
+        <button class="btn btn-primary" type="button" [disabled]="!editable() || !versions()?.length || !!busy() || approving()" (click)="approve()">Send to research</button>
+      }
     </div>
   </div>
 
-  @if (!editable()) {
-    <div class="banner">The plan is approved. Facts are researched on the Fact research tab.</div>
+  @if (showEditUnlock()) {
+    <div class="banner row-between"><span>The plan is locked while you research or write. Press Edit plan to change chapters and timing.</span>
+      <button class="btn btn-sm" type="button" (click)="unlockEdit()">Edit plan</button></div>
   }
 
+  @if (editable()) {
+    <section class="panel" style="margin-bottom:var(--s3)">
+      <div class="panel-head"><h2>Video length</h2><span class="meta">planning · research · writer</span></div>
+      <div class="row-between" style="padding:12px;gap:var(--s2);flex-wrap:wrap">
+        <label class="select">Target:
+          <input type="number" min="8" max="120" step="1" aria-label="Target duration in minutes"
+            [value]="p.targetDurationMin" (change)="saveDuration(+$any($event.target).value)" /> min (8–120)</label>
+        <span class="mute">~{{ wordHint() }} spoken words at 140 wpm · you choose length per video</span>
+      </div>
+    </section>
+  }
   <es-project-ai-settings [project]="p" mode="research" />
   @if (state()?.error || actionError()) {
     <div class="banner row-between"><span>{{ state()?.error || actionError() }}</span>
@@ -28,20 +48,33 @@
     </div>
   }
 
-  @if (!busy() && versions() && !versions()!.length) {
+  @if (!busy() && !(versions()?.length)) {
     <div class="empty"><b>No plan yet</b>Generate the first plan from the topic and the library.
       <div class="actions" style="justify-content:center;margin-top:12px">
         <button class="btn btn-primary" type="button" [disabled]="!editable()" (click)="generate()">Generate plan</button>
       </div>
     </div>
-  } @else {
+  } @else if (busy() || (versions()?.length ?? 0) > 0) {
     <section class="panel">
       <div class="panel-head"><h2>Timeline</h2>
-        <span class="meta">{{ busy() === 'generating' ? 'generating' : plan() ? plan()!.chapters.length + ' chapters · ' + totalLabel() : '' }}</span></div>
+        <span class="meta">{{ busy() === 'generating' ? 'generating' : plan() ? plan()!.chapters.length + ' chapters · total ' + totalLabel() + ' · target ' + targetLabel() : '' }}</span>
+        @if (editable() && plan() && !busy()) {
+          <span class="actions">
+            <button class="btn btn-sm" type="button" (click)="refineAllChapters()">Refine all chapters</button>
+            <button class="btn btn-sm" type="button" (click)="showAddChapter.set(!showAddChapter())">Add chapter</button>
+          </span>
+        }
+      </div>
       @if (plan() && !busy()) {
-        <div class="timeline" role="img" [attr.aria-label]="'Chapter timeline, ' + plan()!.targetDurationMin + ' minutes'">
+        <div class="timeline" role="img" [attr.aria-label]="'Chapter timeline, ' + totalLabel()">
           @for (row of chapters(); track row.c.order) {
-            <div [style.flex]="row.c.lengthMin" [title]="row.c.title">{{ row.c.title }}</div>
+            <div class="tl-seg" [style.flex]="row.c.lengthMin" [title]="row.c.title">
+              <span class="tl-seg-label">{{ row.c.title }}</span>
+              @if (editable()) {
+                <button type="button" class="tl-seg-remove" aria-label="Remove chapter" [disabled]="!!busy()"
+                  (click)="removeChapter(row.c.order)">×</button>
+              }
+            </div>
           }
           @for (m of markers(); track m.label) {
             <span class="tl-mark" [class]="'tl-mark ' + m.cls" [style.left]="m.left" [style.right]="m.right">{{ m.label }}</span>
@@ -52,16 +85,42 @@
       }
     </section>
 
+    @if (editable() && showAddChapter() && plan()) {
+      <section class="panel" style="margin-top:var(--s2)">
+        <div class="panel-head"><h2>New chapter</h2><span class="meta">insert position · LLM fills hooks & subpoints</span></div>
+        <div class="field-group" style="padding:12px">
+          <label class="select">Insert after chapter:
+            <select aria-label="Insert after chapter" [value]="newChapterInsertAfter()" (change)="newChapterInsertAfter.set(+$any($event.target).value)">
+              <option [value]="0">Start (before chapter 1)</option>
+              @for (row of chapters(); track row.c.order) {
+                <option [value]="row.c.order">{{ row.c.order }} · {{ row.c.title }}</option>
+              }
+            </select></label>
+          <input class="field" type="text" placeholder="Chapter title (optional)" aria-label="New chapter title"
+            [value]="newChapterTitle()" (input)="newChapterTitle.set($any($event.target).value)">
+          <textarea class="field" rows="3" placeholder="What should this chapter cover?" aria-label="New chapter description"
+            [value]="newChapterDescription()" (input)="newChapterDescription.set($any($event.target).value)"></textarea>
+          <label class="select">Length (min):
+            <input type="number" min="0.5" step="0.5" aria-label="New chapter length in minutes"
+              [value]="newChapterLengthMin()" (input)="newChapterLengthMin.set(+$any($event.target).value)"></label>
+          <div class="actions">
+            <button class="btn btn-primary btn-sm" type="button" [disabled]="!!busy() || !newChapterDescription().trim()" (click)="addChapter()">Insert chapter</button>
+            <button class="btn btn-sm" type="button" (click)="showAddChapter.set(false)">Cancel</button>
+          </div>
+        </div>
+      </section>
+    }
+
     <section class="panel panel-flush">
-      <div class="panel-head"><h2>Chapters</h2><span class="meta">subtopics · timing · hooks</span></div>
+      <div class="panel-head"><h2>Chapters</h2><span class="meta">Edit · Retry · Delete on each row · subtopics · timing · hooks</span></div>
       <div class="table-scroll">
         <table class="tbl">
-          <colgroup><col style="width:70px"><col style="width:70px"><col style="width:36%"><col></colgroup>
-          <thead><tr><th>Start</th><th>Length</th><th>Chapter</th><th>Hooks</th></tr></thead>
+          <colgroup><col style="width:70px"><col style="width:70px"><col style="width:34%"><col><col style="width:220px"></colgroup>
+          <thead><tr><th>Start</th><th>Length</th><th>Chapter</th><th>Hooks</th>@if (chapterRowActions()) { <th>Actions</th> }</tr></thead>
           <tbody>
             @if (busy() || !plan()) {
               @for (n of [1, 2, 3, 4, 5]; track n) {
-                <tr><td colspan="4"><div class="skeleton"></div></td></tr>
+                <tr><td [attr.colspan]="chapterRowActions() ? 5 : 4"><div class="skeleton"></div></td></tr>
               }
             } @else {
               @for (row of chapters(); track row.c.order) {
@@ -76,6 +135,15 @@
                       }
                     </div>
                   </td>
+                  @if (chapterRowActions()) {
+                    <td>
+                      <div class="actions" style="flex-wrap:wrap;gap:4px">
+                        <button class="btn btn-sm" type="button" [disabled]="!!busy()" (click)="editChapter(row.c.order, row.c.title)">Edit</button>
+                        <button class="btn btn-sm" type="button" [disabled]="!!busy()" (click)="retryChapter(row.c.order, row.c.title)">Retry</button>
+                        <button class="btn btn-sm" type="button" [disabled]="!!busy() || !editable()" (click)="removeChapter(row.c.order)">Delete</button>
+                      </div>
+                    </td>
+                  }
                 </tr>
               }
             }

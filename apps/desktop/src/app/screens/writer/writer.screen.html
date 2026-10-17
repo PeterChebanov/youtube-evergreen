@@ -1,3 +1,5 @@
+<es-workspace-library kind="script" />
+
 @if (!project()) {
   <div class="page-head"><div><h1>Writer</h1><p class="sub">Chapter by chapter, with summaries of earlier chapters and the channel style.</p></div></div>
   <div class="empty"><b>No project selected</b>Pick a topic in Advice or send a custom request.</div>
@@ -7,10 +9,14 @@
 } @else {
   <div class="page-head">
     <div>
+      @if (project(); as p) { <es-project-tag [title]="p.title" /> }
       <h1>Writer · chapter {{ current()?.chapterOrder ?? '–' }} of {{ state()?.chapters?.length ?? '–' }}</h1>
       <p class="sub">Chapter by chapter, with summaries of earlier chapters and the channel style.</p>
     </div>
     <div class="actions">
+      @if (hasScriptText() && !done()) {
+        <button class="btn" type="button" [disabled]="busy()" (click)="openFullText()">Watch full text</button>
+      }
       @if (!done()) {
         <button class="btn" type="button" [disabled]="busy() || step()?.kind === 'none' || editing()" (click)="next()">{{ step()?.label ?? 'Next chapter' }}</button>
       }
@@ -95,4 +101,11 @@
       }
     </section>
   </div>
+
+  <es-writer-full-text-dialog
+    [open]="fullTextOpen()"
+    [projectId]="project()?.id ?? null"
+    (closed)="closeFullText()"
+    (saved)="onFullTextSaved()"
+  />
 }

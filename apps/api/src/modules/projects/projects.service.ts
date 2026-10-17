@@ -3,7 +3,8 @@ import {
   LLM_STAGE_IDS,
   SEARCH_PROVIDER_IDS,
   adviceFiltersSchema,
-  adviceRunResultSchema,
+  adviceRunStoredSchema,
+  type AdviceRunStored,
   canTransition,
   channelUrl,
   planContentSchema,
@@ -15,10 +16,11 @@ import {
   type SearchProviderId,
   type UpdateProjectRequest,
 } from '@youtube-ai-tool/shared';
-import type { Prisma, Project } from '@prisma/client';
+import type { AdviceRun, Prisma, Project } from '@prisma/client';
 import { conflict, DomainError, invalid, orNotFound } from '../../common/domain-error';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DbToolsService } from '../db-tools/db-tools.service';
+import { adviceTopicProjectName, parseAdviceRunResults, reconcileTopicProjects } from '../advice/advice-run-results';
 import { ResearchService } from '../library/research.service';
 import { SingleVideoService } from '../library/single-video.service';
 
@@ -82,13 +84,16 @@ export class ProjectsService {
   /** Project from one of the three Advice topics (REQUIREMENTS 2.10). */
   async createFromAdvice(runId: string, topicIndex: number): Promise<ProjectDto> {
     const run = orNotFound(await this.prisma.adviceRun.findUnique({ where: { id: runId } }), 'Advice run');
-    if (run.projectId) throw conflict('A topic from this Advice run was already taken into a project');
-    const topic = adviceRunResultSchema.omit({ runId: true }).parse(run.results).topics[topicIndex];
+    const stored = await this.resolveAdviceRunStored(run);
+    await this.persistAdviceTopicProjectsIfLegacy(run.id, run.results, stored);
+    if (stored.topicProjects[String(topicIndex)]) throw conflict('This Advice topic is already linked to a project');
+    const topic = stored.topics[topicIndex];
+    if (!topic) throw invalid(`Topic index ${topicIndex} is out of range`);
     const filters = adviceFiltersSchema.parse(run.filters);
     const genre = topic.genre ? await this.prisma.genre.findFirst({ where: { name: { equals: topic.genre, mode: 'insensitive' } } }) : null;
     const project = await this.prisma.project.create({
       data: {
-        title: topic.title.slice(0, TITLE_MAX),
+        title: adviceTopicProjectName(topic).slice(0, TITLE_MAX),
         entryType: 'advice',
         language: filters.language,
         targetDurationMin: filters.targetDurationMin,
@@ -99,7 +104,11 @@ export class ProjectsService {
         useDatabase: true,
       },
     });
-    await this.prisma.adviceRun.update({ where: { id: runId }, data: { projectId: project.id } });
+    const topicProjects = { ...stored.topicProjects, [String(topicIndex)]: project.id };
+    await this.prisma.adviceRun.update({
+      where: { id: runId },
+      data: { projectId: run.projectId ?? project.id, results: { ...stored, topicProjects } },
+    });
     return toProjectDto(project);
   }
 
@@ -186,10 +195,55 @@ export class ProjectsService {
 
   async remove(id: string) {
     await this.load(id);
-    await this.prisma.$transaction([
-      this.prisma.adviceRun.updateMany({ where: { projectId: id }, data: { projectId: null } }),
-      this.prisma.project.delete({ where: { id } }),
-    ]);
+    const runs = await this.prisma.adviceRun.findMany({ select: { id: true, projectId: true, results: true } });
+    const runUpdates: Prisma.PrismaPromise<unknown>[] = [];
+    for (const run of runs) {
+      const raw = adviceRunStoredSchema.safeParse(run.results);
+      if (!raw.success) continue;
+      const topicProjects = Object.fromEntries(
+        Object.entries(raw.data.topicProjects).filter(([, pid]) => pid !== id),
+      );
+      const changed =
+        run.projectId === id ||
+        Object.keys(topicProjects).length !== Object.keys(raw.data.topicProjects).length;
+      if (!changed) continue;
+      runUpdates.push(
+        this.prisma.adviceRun.update({
+          where: { id: run.id },
+          data: {
+            projectId: run.projectId === id ? null : run.projectId,
+            results: { ...raw.data, topicProjects },
+          },
+        }),
+      );
+    }
+    await this.prisma.$transaction([...runUpdates, this.prisma.project.delete({ where: { id } })]);
+  }
+
+  private async resolveAdviceRunStored(run: Pick<AdviceRun, 'results' | 'projectId'>) {
+    const raw = adviceRunStoredSchema.parse(run.results);
+    const ids = new Set([...Object.values(raw.topicProjects), ...(run.projectId ? [run.projectId] : [])]);
+    const projects = ids.size
+      ? await this.prisma.project.findMany({
+          where: { id: { in: [...ids] } },
+          select: { id: true, title: true, topic: true },
+        })
+      : [];
+    const byId = new Map(projects.map((p) => [p.id, p]));
+    const legacy = run.projectId ? byId.get(run.projectId) ?? null : null;
+    const parsed = parseAdviceRunResults(run, legacy);
+    return reconcileTopicProjects(parsed, ids, byId);
+  }
+
+  /** Persist repaired topicProjects when legacy JSON disagrees with project rows. */
+  private async persistAdviceTopicProjectsIfLegacy(runId: string, rawResults: unknown, resolved: AdviceRunStored) {
+    const raw = adviceRunStoredSchema.safeParse(rawResults);
+    if (!raw.success) return;
+    if (JSON.stringify(raw.data.topicProjects) === JSON.stringify(resolved.topicProjects)) return;
+    await this.prisma.adviceRun.update({
+      where: { id: runId },
+      data: { results: { ...raw.data, topicProjects: resolved.topicProjects } },
+    });
   }
 
   private async startChannelResearch(youtubeChannelId: string) {

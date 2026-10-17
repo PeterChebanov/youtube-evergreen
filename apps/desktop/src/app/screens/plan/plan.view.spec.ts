@@ -33,6 +33,6 @@ describe('chapterChips', () => {
   });
 });
 
-it('describes the target and riddle timing', () => {
-  expect(planSubtitle(plan)).toBe('Target 50:00 · mandatory riddle planted at 1:30 and answered at 50:00.');
+it('describes total length, target and riddle timing', () => {
+  expect(planSubtitle(plan)).toBe('Total 50:00 · target 50:00 · riddle at 1:30 / 50:00.');
 });

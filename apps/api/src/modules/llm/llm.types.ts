@@ -22,11 +22,15 @@ export type ToolSet = {
   execute: (call: LlmToolCall) => Promise<unknown>;
 };
 
+export type LlmStructuredSchema = { name: string; schema: Record<string, unknown> };
+
 export type LlmChatRequest = {
   model: string;
   promptName: PromptName;
   messages: LlmMessage[];
   tools?: LlmToolDefinition[];
+  /** When set, OpenAI-compatible backends use `json_schema` instead of legacy `json_object`. */
+  structuredSchema?: LlmStructuredSchema;
 };
 
 export type LlmChatResponse = {

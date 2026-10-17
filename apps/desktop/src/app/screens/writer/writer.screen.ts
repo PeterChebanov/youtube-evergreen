@@ -6,6 +6,9 @@ import { paragraphs, shortUrl } from '../../core/format';
 import { Nav, ProjectStore } from '../../core/stores';
 import { chapterFacts } from '../facts/facts.view';
 import { ProjectAiSettings } from '../../ui/project-ai-settings';
+import { ProjectTag } from '../../ui/project-tag';
+import { WorkspaceLibrary } from '../../ui/workspace-library';
+import { WriterFullTextDialog } from './writer-full-text.dialog';
 import { chapterLabel, focusChapter, nextStep } from './writer.view';
 
 const WRITER_STATUSES = ['research_approved', 'writing', 'done'];
@@ -13,7 +16,7 @@ const WRITER_STATUSES = ['research_approved', 'writing', 'done'];
 @Component({
   selector: 'section[esWriter]',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ProjectAiSettings],
+  imports: [ProjectAiSettings, ProjectTag, WorkspaceLibrary, WriterFullTextDialog],
   host: { class: 'screen', id: 'screen-writer', 'data-screen': 'writer' },
   templateUrl: './writer.screen.html',
 })
@@ -46,6 +49,8 @@ export class WriterScreen {
   readonly paragraphs = computed(() => paragraphs(this.current()?.text ?? ''));
   readonly chapterFacts = computed(() => (this.current() ? chapterFacts(this.facts(), this.current()!.chapterOrder) : []));
   readonly language = computed(() => (this.project()?.language ?? 'ru').toUpperCase());
+  readonly hasScriptText = computed(() => this.state()?.chapters.some((c) => c.text.trim()) ?? false);
+  readonly fullTextOpen = signal(false);
 
   constructor() {
     let projectId: string | undefined;
@@ -131,6 +136,19 @@ export class WriterScreen {
     const p = this.project();
     if (!p) return;
     await this.act(async () => saveText(`${fileSlug(p.title)}.md`, await this.api.exportScript(p.id)), false);
+  }
+
+  openFullText() {
+    if (!this.project() || !this.hasScriptText()) return;
+    this.fullTextOpen.set(true);
+  }
+
+  closeFullText() {
+    this.fullTextOpen.set(false);
+  }
+
+  async onFullTextSaved() {
+    await this.load();
   }
 
   async finalize() {
