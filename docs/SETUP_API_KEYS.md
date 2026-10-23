@@ -229,5 +229,5 @@ curl -s -X POST http://localhost:3000/library/research/preview \
 ## 7. Связанные файлы
 
 - Шаблон env: `config/env.example`
-- Карта промптов и Writer-слоёв: `PROMPTS.md`
+- Файлы промптов и Writer-слоёв: `apps/api/src/prompts/`
 - Smoke-тест API: `docs/API_SMOKE_TEST.md`

@@ -67,7 +67,7 @@ function toneLayer(refs: TranscriptAnalysis[] | undefined): string | null {
     .join('\n');
 }
 
-/** Layer order from PROMPTS.md §3; later layers supplement earlier ones. */
+/** Writer prompt layer order; later layers supplement earlier ones. */
 export function buildLayers(src: LayerSources): PromptLayer[] {
   return [
     ...src.base.map((body, i) => ({ label: i === 0 ? 'Task' : 'Task details', body })),

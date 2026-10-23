@@ -27,7 +27,7 @@ const querySchema = z
     ),
   }));
 
-/** Read-only view of every table, exactly as stored (REQUIREMENTS «База данных»). */
+/** Read-only view of every table, exactly as stored (Database tab). */
 @ApiTags('database')
 @Controller('database')
 export class DatabaseViewController {

@@ -3,6 +3,13 @@ dist
 .env
 .env.local
 example.env
+
+# Internal product/spec docs (local only, not published)
+README.initial
+REQUIREMENTS.md
+IMPLEMENTATION_PLAN.md
+PROMPTS.md
+AI_MODEL_WORKFLOW.md
 *.log
 .DS_Store
 coverage

@@ -1,4 +1,4 @@
-/** REQUIREMENTS «Список жанров-направлений»; focus is a direction, not a boundary. */
+/** Genre directions list; focus is a direction, not a boundary. */
 export const GENRE_SEED: ReadonlyArray<{ name: string; focus: string; status: 'approved' | 'new' }> = [
   { name: 'Science & how things work', focus: 'Phenomena people never thought about; a familiar thing from an unexpected angle; shocking discoveries; the inner workings of what we only know from the outside', status: 'approved' },
   { name: 'Mysteries, legends & the unexplained', focus: 'Urban legends, hoaxes, eyewitness accounts, unexplained events; what can be explained and our hypotheses', status: 'approved' },

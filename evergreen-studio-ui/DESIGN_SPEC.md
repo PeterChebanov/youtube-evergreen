@@ -1,6 +1,6 @@
 # Evergreen Studio UI specification
 
-For an AI coding agent. Implement the interface **exactly** as the reference. If this file and the reference disagree, the reference (`reference/index.html` + `tokens.css` + `components.css`) wins. If this file and `REQUIREMENTS.md` of the product disagree on behavior, `REQUIREMENTS.md` wins.
+For an AI coding agent. Implement the interface **exactly** as the reference. If this file and the reference disagree, the reference (`reference/index.html` + `tokens.css` + `components.css`) wins. If this file and product requirements disagree on behavior, product requirements win.
 
 ## 0. How to use this package
 
@@ -130,7 +130,7 @@ Run `node check-layout.js` (section 8) after every change to layout or content t
 
 ## 6. Screens
 
-All screens render inside `.main` as `.screen` with the page head first. Sample values below are examples. Field names map to the product entities in `IMPLEMENTATION_PLAN.md`.
+All screens render inside `.main` as `.screen` with the page head first. Sample values below are examples. Field names map to the API and Prisma entities in `apps/api`.
 
 ### 6.1 Research (`reference/screens/research.html`)
 
